@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Anton, JetBrains_Mono, Manrope } from "next/font/google";
 import { CartProvider } from "@/lib/cart";
 import { AuthProvider } from "@/lib/auth";
-import { fetchSettings } from "@/lib/api";
+import { fetchCategories, fetchSettings } from "@/lib/api";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import "./globals.css";
@@ -21,15 +21,16 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const settings = await fetchSettings();
+  const [settings, categories] = await Promise.all([fetchSettings(), fetchCategories()]);
+  const navCategories = categories.map((c) => ({ slug: c.slug, name: c.name }));
   return (
     <html lang="en" className={`${anton.variable} ${manrope.variable} ${jetbrains.variable}`}>
       <body className="min-h-screen antialiased">
         <AuthProvider>
           <CartProvider>
-            <Header announcements={settings.announcements} />
+            <Header announcements={settings.announcements} categories={navCategories} />
             <main>{children}</main>
-            <Footer contact={settings.contact} social={settings.social} />
+            <Footer contact={settings.contact} social={settings.social} categories={navCategories} />
           </CartProvider>
         </AuthProvider>
       </body>
