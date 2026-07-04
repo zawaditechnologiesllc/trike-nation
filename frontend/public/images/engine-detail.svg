@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1b1b"/>
+      <stop offset="1" stop-color="#0f0f0f"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0 H0 V40" fill="none" stroke="#242424" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <rect width="800" height="450" fill="url(#grid)"/>
+  <rect x="0" y="440" width="800" height="10" fill="#ff3b45" opacity="0.85"/>
+  <line x1="120" y1="376" x2="680" y2="376" stroke="#333333" stroke-width="3"/>
+  
+    <rect x="300" y="180" width="200" height="160" rx="12" fill="#1a1a1a" stroke="#333333" stroke-width="5"/>
+    <line x1="320" y1="180" x2="320" y2="140" stroke="#8e8e93" stroke-width="7"/><line x1="350" y1="180" x2="350" y2="140" stroke="#8e8e93" stroke-width="7"/><line x1="380" y1="180" x2="380" y2="140" stroke="#8e8e93" stroke-width="7"/><line x1="410" y1="180" x2="410" y2="140" stroke="#8e8e93" stroke-width="7"/><line x1="440" y1="180" x2="440" y2="140" stroke="#8e8e93" stroke-width="7"/><line x1="470" y1="180" x2="470" y2="140" stroke="#8e8e93" stroke-width="7"/>
+    <circle cx="400" cy="260" r="42" fill="none" stroke="#ff3b45" stroke-width="8"/>
+    <circle cx="400" cy="260" r="14" fill="#ff3b45"/>
+    <path d="M500 300 C 560 300 570 250 600 250" fill="none" stroke="#8e8e93" stroke-width="10" stroke-linecap="round"/>
+    <rect x="250" y="280" width="50" height="60" rx="8" fill="#0f0f0f" stroke="#ff3b45" stroke-width="4"/>
+  
+  <text x="400" y="70" text-anchor="middle" font-family="'Arial Black', Arial, sans-serif" font-weight="900" font-size="30" letter-spacing="4" fill="#f5f5f7"></text>
+  <text x="400" y="100" text-anchor="middle" font-family="'Courier New', monospace" font-weight="700" font-size="15" letter-spacing="5" fill="#8e8e93">13.5 NM @ 2500 RPM</text>
+  <text x="24" y="432" font-family="'Courier New', monospace" font-size="12" letter-spacing="3" fill="#8e8e93">TRIKE NATION // ENGINEERED FOR ADRENALINE</text>
+</svg>

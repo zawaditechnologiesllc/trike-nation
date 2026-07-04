@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1b1b"/>
+      <stop offset="1" stop-color="#0f0f0f"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0 H0 V40" fill="none" stroke="#242424" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <rect width="800" height="450" fill="url(#grid)"/>
+  <rect x="0" y="440" width="800" height="10" fill="#b31d28" opacity="0.85"/>
+  <line x1="120" y1="376" x2="680" y2="376" stroke="#333333" stroke-width="3"/>
+  
+    
+  <circle cx="230" cy="315" r="62" fill="#0f0f0f" stroke="#333333" stroke-width="17.360000000000003"/>
+  <circle cx="230" cy="315" r="26.04" fill="none" stroke="#b31d28" stroke-width="3"/>
+  <circle cx="230" cy="315" r="6.2" fill="#8e8e93"/>
+  <line x1="230" y1="315" x2="254.8" y2="315" stroke="#8e8e93" stroke-width="2"/><line x1="230" y1="315" x2="242.4" y2="336.4774300138541" stroke="#8e8e93" stroke-width="2"/><line x1="230" y1="315" x2="217.6" y2="336.4774300138541" stroke="#8e8e93" stroke-width="2"/>
+
+    
+  <circle cx="570" cy="315" r="62" fill="#0f0f0f" stroke="#333333" stroke-width="17.360000000000003"/>
+  <circle cx="570" cy="315" r="26.04" fill="none" stroke="#b31d28" stroke-width="3"/>
+  <circle cx="570" cy="315" r="6.2" fill="#8e8e93"/>
+  <line x1="570" y1="315" x2="594.8" y2="315" stroke="#8e8e93" stroke-width="2"/><line x1="570" y1="315" x2="582.4" y2="336.4774300138541" stroke="#8e8e93" stroke-width="2"/><line x1="570" y1="315" x2="557.6" y2="336.4774300138541" stroke="#8e8e93" stroke-width="2"/>
+
+    <path d="M230 315 L340 230 L470 230 L570 315" fill="none" stroke="#b31d28" stroke-width="10" stroke-linecap="round"/>
+    <path d="M470 230 L520 160 M520 160 L480 150 M520 160 L555 150" fill="none" stroke="#8e8e93" stroke-width="8" stroke-linecap="round"/>
+    <path d="M300 230 L360 180 L410 180" fill="none" stroke="#8e8e93" stroke-width="8" stroke-linecap="round"/>
+    <rect x="360" y="205" width="80" height="40" rx="6" fill="#1a1a1a" stroke="#333333" stroke-width="3"/>
+  
+  <text x="400" y="70" text-anchor="middle" font-family="'Arial Black', Arial, sans-serif" font-weight="900" font-size="30" letter-spacing="4" fill="#f5f5f7">MONSTER MINIBIKE</text>
+  <text x="400" y="100" text-anchor="middle" font-family="'Courier New', monospace" font-weight="700" font-size="15" letter-spacing="5" fill="#8e8e93">212CC · 60 MPH</text>
+  <text x="24" y="432" font-family="'Courier New', monospace" font-size="12" letter-spacing="3" fill="#8e8e93">TRIKE NATION // ENGINEERED FOR ADRENALINE</text>
+</svg>

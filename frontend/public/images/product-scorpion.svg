@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1b1b"/>
+      <stop offset="1" stop-color="#0f0f0f"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0 H0 V40" fill="none" stroke="#242424" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <rect width="800" height="450" fill="url(#grid)"/>
+  <rect x="0" y="440" width="800" height="10" fill="#b31d28" opacity="0.85"/>
+  <line x1="120" y1="376" x2="680" y2="376" stroke="#333333" stroke-width="3"/>
+  
+    
+  <circle cx="200" cy="320" r="52" fill="#0f0f0f" stroke="#333333" stroke-width="14.560000000000002"/>
+  <circle cx="200" cy="320" r="21.84" fill="none" stroke="#b31d28" stroke-width="3"/>
+  <circle cx="200" cy="320" r="5.2" fill="#8e8e93"/>
+  <line x1="200" y1="320" x2="220.8" y2="320" stroke="#8e8e93" stroke-width="2"/><line x1="200" y1="320" x2="210.4" y2="338.01332839871634" stroke="#8e8e93" stroke-width="2"/><line x1="200" y1="320" x2="189.6" y2="338.01332839871634" stroke="#8e8e93" stroke-width="2"/>
+
+    
+  <circle cx="590" cy="320" r="62" fill="#0f0f0f" stroke="#333333" stroke-width="17.360000000000003"/>
+  <circle cx="590" cy="320" r="26.04" fill="none" stroke="#b31d28" stroke-width="3"/>
+  <circle cx="590" cy="320" r="6.2" fill="#8e8e93"/>
+  <line x1="590" y1="320" x2="614.8" y2="320" stroke="#8e8e93" stroke-width="2"/><line x1="590" y1="320" x2="602.4" y2="341.4774300138541" stroke="#8e8e93" stroke-width="2"/><line x1="590" y1="320" x2="577.6" y2="341.4774300138541" stroke="#8e8e93" stroke-width="2"/>
+
+    <path d="M200 320 L280 260 L500 260 L590 320" fill="none" stroke="#b31d28" stroke-width="10" stroke-linecap="round"/>
+    <path d="M330 260 L330 190 L400 190" fill="none" stroke="#8e8e93" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="405" cy="190" r="26" fill="none" stroke="#8e8e93" stroke-width="7"/>
+    <rect x="430" y="215" width="100" height="46" rx="8" fill="#1a1a1a" stroke="#333333" stroke-width="3"/>
+  
+  <text x="400" y="70" text-anchor="middle" font-family="'Arial Black', Arial, sans-serif" font-weight="900" font-size="30" letter-spacing="4" fill="#f5f5f7">SCORPION KART</text>
+  <text x="400" y="100" text-anchor="middle" font-family="'Courier New', monospace" font-weight="700" font-size="15" letter-spacing="5" fill="#8e8e93">145 LBS · CHAIN-DRIVEN</text>
+  <text x="24" y="432" font-family="'Courier New', monospace" font-size="12" letter-spacing="3" fill="#8e8e93">TRIKE NATION // ENGINEERED FOR ADRENALINE</text>
+</svg>

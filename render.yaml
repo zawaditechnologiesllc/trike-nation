@@ -1,0 +1,18 @@
+# Render Blueprint — deploys the Trike Nation API.
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: trike-nation-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false # set in the Render dashboard
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false # set in the Render dashboard (keep secret)
+      - key: CORS_ORIGIN
+        value: "*" # tighten to your Vercel URL after first deploy

@@ -1,0 +1,488 @@
+import type { Category, Product, Testimonial } from "./types";
+
+/**
+ * Local catalog used to prefill every page. The same data is seeded into
+ * Supabase (see /supabase/seed.sql); when NEXT_PUBLIC_API_URL is set the
+ * frontend reads from the Render backend and this module is the fallback.
+ */
+
+export const CATEGORIES: Category[] = [
+  {
+    slug: "drift-karts",
+    name: "Drift Go-Karts",
+    tagline: "Engineered for maximum lateral G-force",
+    count: 12,
+    image: "/images/category-drift-karts.svg",
+  },
+  {
+    slug: "mini-trikes",
+    name: "Mini Trikes",
+    tagline: "Handcrafted three-wheel adrenaline",
+    badge: "Bestseller",
+    count: 8,
+    image: "/images/category-mini-trikes.svg",
+  },
+  {
+    slug: "mini-bikes",
+    name: "Mini Bikes",
+    tagline: "Raw power in a compact frame",
+    count: 5,
+    image: "/images/category-mini-bikes.svg",
+  },
+  {
+    slug: "quad-bikes",
+    name: "Quad Bikes",
+    tagline: "Four wheels, zero compromise",
+    badge: "All-Terrain",
+    count: 4,
+    image: "/images/category-quad-bikes.svg",
+  },
+  {
+    slug: "spare-parts",
+    name: "Spare Parts",
+    tagline: "Keep your machine roaring",
+    count: 9,
+    image: "/images/category-spare-parts.svg",
+  },
+];
+
+export const PRODUCTS: Product[] = [
+  {
+    slug: "viper-special-edition-tgv-mini-trike",
+    name: "“Viper” Special Edition TGV Mini Trike",
+    category: "mini-trikes",
+    priceCents: 110000,
+    compareAtCents: 120000,
+    badges: ["SALE", "SPECIAL EDITION"],
+    blurb: "Custom Build • Worldwide Ship",
+    description:
+      "The Viper Special Edition is engineered for the adrenaline seeker. Featuring a reinforced TGV red-coated frame, oversized ProTaper bars, and a high-output 200cc engine, this machine delivers brutal performance on any terrain.",
+    engineSize: "200CC",
+    specs: [
+      { label: "Engine Type", value: "200cc 6.5HP 4-Stroke" },
+      { label: "Top Speed", value: "45 MPH (Restricted)" },
+      { label: "Frame Material", value: "Reinforced TIG-Welded Steel" },
+      { label: "Brake System", value: "Front Hydraulic Disc" },
+      { label: "Drive Train", value: "Heavy-Duty Centrifugal Clutch" },
+    ],
+    boxContents: [
+      "Fully Assembled Viper",
+      "2x Replacement Sleeves",
+      "Maintenance Tool Kit",
+      "10% Coupon BIKEMIKE26",
+    ],
+    features: [
+      {
+        title: "Handcrafted Precision",
+        text: "Each Viper unit is individually assembled and stress-tested in our California facility.",
+      },
+      {
+        title: "200cc Adrenaline",
+        text: "High-torque 4-stroke engine modified for maximum throttle response and drift stability.",
+      },
+      {
+        title: "Custom Sleeves",
+        text: "Proprietary PVC rear wheel sleeves designed for consistent sliding and long-term durability.",
+      },
+    ],
+    image: "/images/product-viper.svg",
+    featured: true,
+    inStock: true,
+  },
+  {
+    slug: "200cc-drift-trike-go-kart",
+    name: "200CC Drift Trike Go-Kart",
+    category: "drift-karts",
+    priceCents: 139900,
+    compareAtCents: 150000,
+    badges: ["SALE"],
+    blurb: "4-Stroke • Upgraded Sleeves",
+    description:
+      "A drift-first go-kart built around a torquey 200cc 4-stroke and upgraded rear sleeves. Low center of gravity, wide stance, and a chromoly-reinforced frame make it the benchmark for controlled slides.",
+    engineSize: "200CC",
+    specs: [
+      { label: "Engine Type", value: "200cc 4-Stroke" },
+      { label: "Top Speed", value: "40 MPH" },
+      { label: "Frame Material", value: "Chromoly Steel" },
+      { label: "Brake System", value: "Rear Hydraulic Disc" },
+      { label: "Drive Train", value: "Centrifugal Clutch" },
+    ],
+    boxContents: [
+      "Fully Assembled Kart",
+      "Upgraded Drift Sleeves (Installed)",
+      "Maintenance Tool Kit",
+    ],
+    features: [
+      {
+        title: "Slide Geometry",
+        text: "Wide rear track and low seat height tuned for maximum lateral G-force.",
+      },
+      {
+        title: "4-Stroke Torque",
+        text: "Instant low-end grunt that breaks traction on demand.",
+      },
+      {
+        title: "Upgraded Sleeves",
+        text: "Ships with our high-durability PVC drift sleeves pre-installed.",
+      },
+    ],
+    image: "/images/product-drift-kart.svg",
+    featured: true,
+    inStock: true,
+  },
+  {
+    slug: "212cc-monster-minibike",
+    name: "212cc Monster Minibike",
+    category: "mini-bikes",
+    priceCents: 65000,
+    compareAtCents: 69900,
+    badges: ["60MPH"],
+    blurb: "Raw Power • Terrain Ready",
+    description:
+      "The Monster Minibike pairs a 212cc engine with knobby all-terrain tires and a beefed-up suspension fork. Sixty miles per hour of raw, unfiltered power in a frame you can throw in a truck bed.",
+    engineSize: "212CC",
+    specs: [
+      { label: "Engine Type", value: "212cc 4-Stroke" },
+      { label: "Top Speed", value: "60 MPH" },
+      { label: "Frame Material", value: "Cold-Rolled Steel" },
+      { label: "Brake System", value: "Front & Rear Disc" },
+      { label: "Tires", value: '19" Knobby All-Terrain' },
+    ],
+    boxContents: ["Minibike (90% Assembled)", "Assembly Hardware Kit", "Owner's Manual"],
+    features: [
+      {
+        title: "Raw Power",
+        text: "212cc of torque tuned for hills, trails, and everything between.",
+      },
+      {
+        title: "Terrain Ready",
+        text: "Knobby tires and long-travel fork eat gravel, dirt, and mud.",
+      },
+      {
+        title: "Truck-Bed Size",
+        text: "Compact frame loads solo and stores anywhere.",
+      },
+    ],
+    image: "/images/product-minibike.svg",
+    featured: true,
+    inStock: true,
+  },
+  {
+    slug: "200cc-go-kart-dune-buggy",
+    name: "200CC Go Kart Dune Buggy",
+    category: "quad-bikes",
+    priceCents: 129900,
+    compareAtCents: 150000,
+    badges: ["BLACK FRIDAY"],
+    blurb: "Adult/Kids Sizes • Black Finish",
+    description:
+      "A go-anywhere dune buggy with full roll cage, bucket seat, and a murdered-out black finish. Available in adult and kids sizing so the whole crew can ride.",
+    engineSize: "200CC",
+    specs: [
+      { label: "Engine Type", value: "200cc 4-Stroke" },
+      { label: "Top Speed", value: "35 MPH" },
+      { label: "Frame Material", value: "Welded Steel Roll Cage" },
+      { label: "Brake System", value: "Hydraulic Disc" },
+      { label: "Seating", value: "Adjustable Bucket Seat" },
+    ],
+    boxContents: ["Assembled Buggy", "Safety Harness", "Tool Kit"],
+    features: [
+      {
+        title: "Full Roll Cage",
+        text: "Welded steel cage with padded harness points for real protection.",
+      },
+      {
+        title: "Two Sizes",
+        text: "Adult and kids frames share the same rugged drivetrain.",
+      },
+      {
+        title: "Black Finish",
+        text: "Powder-coated matte black that shrugs off rock chips.",
+      },
+    ],
+    image: "/images/product-dune-buggy.svg",
+    featured: true,
+    inStock: true,
+  },
+  {
+    slug: "200cc-quad-black",
+    name: "200cc Quad - Black",
+    category: "quad-bikes",
+    priceCents: 129900,
+    compareAtCents: 150000,
+    badges: ["ALL-TERRAIN"],
+    blurb: "Four Wheels • Zero Compromise",
+    description:
+      "Our flagship quad in stealth black. A 200cc thumper, dual A-arm front suspension, and racks front and rear make it as happy hauling gear as it is tearing up trails.",
+    engineSize: "200CC",
+    specs: [
+      { label: "Engine Type", value: "200cc 4-Stroke" },
+      { label: "Top Speed", value: "38 MPH" },
+      { label: "Suspension", value: "Dual A-Arm Front" },
+      { label: "Brake System", value: "Hydraulic Disc" },
+      { label: "Racks", value: "Front & Rear Steel" },
+    ],
+    boxContents: ["Assembled Quad", "Battery & Charger", "Tool Kit"],
+    features: [
+      {
+        title: "All-Terrain",
+        text: "Aggressive tread and ground clearance for mud, sand, and rock.",
+      },
+      {
+        title: "Utility Ready",
+        text: "Steel racks rated for 66 lbs of gear, tools, or firewood.",
+      },
+      {
+        title: "Electric Start",
+        text: "Turn-key ignition with backup pull start.",
+      },
+    ],
+    image: "/images/product-quad.svg",
+    featured: false,
+    inStock: true,
+  },
+  {
+    slug: "drift-sleeve-master-kit",
+    name: "Drift Sleeve Master Kit",
+    category: "spare-parts",
+    priceCents: 8500,
+    badges: [],
+    blurb: "Consistent Slides • Longer Life",
+    description:
+      "The same proprietary PVC sleeves we fit to every Viper, packaged as a complete replacement kit with hardware. Fits all Trike Nation drift trikes and karts.",
+    engineSize: "N/A",
+    specs: [
+      { label: "Material", value: "High-Density PVC" },
+      { label: "Fitment", value: "All TN Drift Models" },
+      { label: "Contents", value: "2x Sleeves + Hardware" },
+      { label: "Install Time", value: "~20 Minutes" },
+    ],
+    boxContents: ["2x Drift Sleeves", "Retainer Hardware", "Install Guide"],
+    features: [
+      {
+        title: "Consistent Slides",
+        text: "Uniform wall thickness for predictable breakaway every run.",
+      },
+      {
+        title: "Long-Term Durability",
+        text: "Outlasts barrel-cut sleeves by 3x in abrasion testing.",
+      },
+      {
+        title: "Tool-Light Install",
+        text: "Swap both sleeves with a single hex key.",
+      },
+    ],
+    image: "/images/product-sleeve-kit.svg",
+    featured: false,
+    inStock: true,
+  },
+  {
+    slug: "venom-v3-trike",
+    name: "Venom V3 Trike",
+    category: "mini-trikes",
+    priceCents: 189900,
+    badges: ["NEW RELEASE"],
+    blurb: "212cc Staged • Hydraulic Disc",
+    description:
+      "The third generation of our staged-engine flagship. The Venom V3 runs a 212cc staged build pushing 55 MPH, with hydraulic disc braking and a frame designed for full-lean drifting.",
+    engineSize: "212CC",
+    specs: [
+      { label: "Engine", value: "212cc Staged" },
+      { label: "Top Speed", value: "55 MPH" },
+      { label: "Brakes", value: "Hydraulic Disc" },
+      { label: "Frame Material", value: "TIG-Welded Chromoly" },
+      { label: "Drive Train", value: "Performance Clutch" },
+    ],
+    boxContents: ["Fully Assembled Venom V3", "Spare Sleeve Set", "Maintenance Tool Kit"],
+    features: [
+      {
+        title: "Staged Engine",
+        text: "Ported head, performance carb, and open exhaust from the factory.",
+      },
+      {
+        title: "55 MPH",
+        text: "The fastest production trike we have ever shipped.",
+      },
+      {
+        title: "Race Geometry",
+        text: "Steeper head angle for razor-sharp turn-in.",
+      },
+    ],
+    image: "/images/product-venom.svg",
+    featured: false,
+    inStock: true,
+  },
+  {
+    slug: "scorpion-kart",
+    name: "Scorpion Kart",
+    category: "drift-karts",
+    priceCents: 165000,
+    badges: [],
+    blurb: "145 LBS • Chain-Driven",
+    description:
+      "A featherweight chain-driven kart built for tight circuits. At 145 lbs the Scorpion changes direction faster than anything in its class.",
+    engineSize: "212CC",
+    specs: [
+      { label: "Weight", value: "145 LBS" },
+      { label: "Drive", value: "Chain-Driven" },
+      { label: "Engine", value: "212cc 4-Stroke" },
+      { label: "Brake System", value: "Rear Disc" },
+    ],
+    boxContents: ["Assembled Kart", "Chain Lube Kit", "Tool Kit"],
+    features: [
+      {
+        title: "Featherweight",
+        text: "145 lbs wet — the lightest kart in the fleet.",
+      },
+      {
+        title: "Chain Drive",
+        text: "Direct, mechanical power delivery with easy gearing swaps.",
+      },
+      {
+        title: "Circuit Tuned",
+        text: "Stiff frame and quick steering rack for tight courses.",
+      },
+    ],
+    image: "/images/product-scorpion.svg",
+    featured: false,
+    inStock: true,
+  },
+  {
+    slug: "nighthawk-500-quad",
+    name: "Nighthawk 500 Quad",
+    category: "quad-bikes",
+    priceCents: 249900,
+    badges: ["400CC"],
+    blurb: "Big Bore • Trail Dominant",
+    description:
+      "The biggest machine in the fleet. The Nighthawk's 400cc big-bore engine and long-travel suspension are built for riders who outgrew everything else.",
+    engineSize: "400CC",
+    specs: [
+      { label: "Engine Type", value: "400cc 4-Stroke" },
+      { label: "Top Speed", value: "55 MPH" },
+      { label: "Suspension", value: "Long-Travel Independent" },
+      { label: "Brake System", value: "Quad Hydraulic Disc" },
+    ],
+    boxContents: ["Assembled Quad", "Battery & Charger", "Premium Tool Kit"],
+    features: [
+      {
+        title: "Big Bore",
+        text: "400cc of usable torque across the whole rev range.",
+      },
+      {
+        title: "Long Travel",
+        text: "Independent suspension soaks up whoops at speed.",
+      },
+      {
+        title: "Trail Dominant",
+        text: "Full lighting kit for night runs.",
+      },
+    ],
+    image: "/images/product-nighthawk.svg",
+    featured: false,
+    inStock: true,
+  },
+  {
+    slug: "thunder-slide-drift-kart",
+    name: "Thunder Slide Drift Kart",
+    category: "drift-karts",
+    priceCents: 175000,
+    badges: ["ELECTRIC"],
+    blurb: "Silent Torque • Instant Slide",
+    description:
+      "Our first electric drift kart. Instant torque from a 3kW hub motor means the Thunder Slide breaks traction the moment you ask — silently.",
+    engineSize: "ELECTRIC",
+    specs: [
+      { label: "Motor", value: "3kW Brushless Hub" },
+      { label: "Top Speed", value: "35 MPH" },
+      { label: "Battery", value: "48V 20Ah Removable" },
+      { label: "Range", value: "~15 Miles Spirited" },
+    ],
+    boxContents: ["Assembled Kart", "48V Charger", "Spare Sleeve Set"],
+    features: [
+      {
+        title: "Instant Torque",
+        text: "100% torque at 0 RPM — slides start when you say so.",
+      },
+      {
+        title: "Silent Running",
+        text: "Ride at hours combustion machines can't.",
+      },
+      {
+        title: "Swap Battery",
+        text: "Removable pack charges indoors in 3 hours.",
+      },
+    ],
+    image: "/images/product-thunder-slide.svg",
+    featured: false,
+    inStock: true,
+  },
+];
+
+export const TESTIMONIALS: Testimonial[] = [
+  {
+    name: "Melissa T.",
+    initials: "MT",
+    role: "Verified Buyer",
+    quote:
+      "I ordered the 200cc go-kart for my son's birthday and the quality blew me away. The build feels solid, the engine runs smoothly, and assembly was simple thanks to the clear instructions. Definitely recommending this site!",
+    rating: 5,
+  },
+  {
+    name: "Daniel Taylor",
+    initials: "DT",
+    role: "Verified Buyer",
+    quote:
+      "I was nervous about ordering such a big item online, but trike-nation.com made it easy. Customer service answered all my questions about spare parts. Shipping was on time, and my quad started right up without a problem.",
+    rating: 5,
+  },
+  {
+    name: "James B.",
+    initials: "JB",
+    role: "Verified Buyer",
+    quote:
+      "If you're looking for high-end drift equipment, this is it. The Viper is a beast and handles like a dream on the tarmac.",
+    rating: 5,
+  },
+  {
+    name: "@gravel_king_99",
+    initials: "GK",
+    role: "Rider",
+    quote:
+      "The build quality is insane. I've taken my mini bike through literal hell and it just keeps roaring.",
+    rating: 5,
+  },
+  {
+    name: "Marcus R.",
+    initials: "MR",
+    role: "Rider",
+    quote:
+      "Hands down the best drift trike on the market. Shipping was faster than the trike itself!",
+    rating: 5,
+  },
+  {
+    name: "Jaxson Miller",
+    initials: "JM",
+    role: "Purchased 2 weeks ago",
+    quote:
+      "Absolute monster of a machine. The low-end torque on the Viper is unmatched. Assembly was straightforward and the build quality feels military grade.",
+    rating: 5,
+  },
+];
+
+export const DISCOUNT_CODES: Record<string, number> = {
+  BIKEMIKE26: 10,
+};
+
+export const CONTACT = {
+  phone: "+1 (916) 436-8303",
+  email: "support@trike-nation.com",
+};
+
+export function getProduct(slug: string): Product | undefined {
+  return PRODUCTS.find((p) => p.slug === slug);
+}
+
+export function getCategory(slug: string): Category | undefined {
+  return CATEGORIES.find((c) => c.slug === slug);
+}
