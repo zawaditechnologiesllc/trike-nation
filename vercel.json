@@ -1,0 +1,5 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "",
+  "buildCommand": "echo '' && echo '✗ Misconfigured Vercel project: building from the repository root, but the Next.js app lives in frontend/.' && echo '  Fix: Vercel dashboard → your project → Settings → Build and Deployment → Root Directory → set it to: frontend' && echo '  Then redeploy. Full guide: DEPLOYMENT.md in this repo.' && echo '' && exit 1"
+}

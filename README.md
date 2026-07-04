@@ -81,6 +81,10 @@ webhooks, emails, the admin panel — without any live credentials. Stub logins:
 
 ## Production deployment
 
+> **Full walkthrough + troubleshooting: [DEPLOYMENT.md](DEPLOYMENT.md)** — including a
+> fork-deployment checklist and fixes for the common Vercel failures. The summary below
+> covers the happy path.
+
 ### 1. Supabase (database + auth + storage)
 
 1. Create a project at [supabase.com](https://supabase.com).
@@ -126,9 +130,12 @@ webhooks, emails, the admin panel — without any live credentials. Stub logins:
 
 ### 6. Frontend on Vercel
 
-1. Import the repo, set **Root Directory** to `frontend` (auto-detected as Next.js).
-2. Env vars: `NEXT_PUBLIC_API_URL` (Render URL), `NEXT_PUBLIC_SUPABASE_URL`,
-   `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+1. Import the repo and set **Root Directory** to `frontend` — the app is *not* at the
+   repo root, and skipping this is the #1 cause of failed deploys (the root build fails
+   with a message pointing at this step). Next.js is then auto-detected.
+2. Env vars (see `frontend/.env.example`): `NEXT_PUBLIC_API_URL` (Render URL),
+   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. These are baked in at
+   build time — redeploy after changing them.
 3. Deploy, then set `FRONTEND_URL`/`CORS_ORIGIN` on Render to the final Vercel URL.
 
 ## API surface

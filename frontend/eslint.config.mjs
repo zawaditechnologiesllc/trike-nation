@@ -13,6 +13,13 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Perf recommendation, not a correctness issue — we intentionally seed
+      // state from external systems (URL params, localStorage) in effects.
+      "react-hooks/set-state-in-effect": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;
