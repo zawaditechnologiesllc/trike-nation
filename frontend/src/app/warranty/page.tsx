@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import PageShell, { Section } from "@/components/PageShell";
 import SpecList from "@/components/SpecList";
-import { CONTACT } from "@/lib/catalog";
+import { fetchSettings } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Warranty" };
 
-export default function WarrantyPage() {
+export default async function WarrantyPage() {
+  const { contact } = await fetchSettings();
   return (
     <PageShell kicker="Over-Engineered, Backed Up" title="Warranty">
       <Section title="Coverage">
@@ -36,7 +37,7 @@ export default function WarrantyPage() {
       </Section>
       <Section title="Making a Claim">
         <p>
-          Email <strong>{CONTACT.email}</strong> with your order number, photos or video of the
+          Email <strong>{contact.email}</strong> with your order number, photos or video of the
           issue, and a short description. Claims are acknowledged within one business day and
           approved claims ship parts within 48 hours.
         </p>

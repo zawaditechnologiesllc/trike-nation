@@ -13,6 +13,7 @@ export interface ProductFeature {
 }
 
 export interface Product {
+  id?: string;
   slug: string;
   name: string;
   category: string; // category slug
@@ -59,9 +60,42 @@ export interface ShippingInfo {
 export interface OrderSummary {
   id: string;
   status: string;
+  paymentStatus?: string;
   subtotalCents: number;
   discountCents: number;
   totalCents: number;
   discountCode?: string;
-  demo?: boolean;
+  redirectUrl?: string;
+}
+
+export type PaymentProvider = "stripe" | "paypal";
+
+export interface PaymentsConfig {
+  stripe: boolean;
+  paypal: boolean;
+}
+
+export interface SiteSettings {
+  hero: {
+    kicker: string;
+    title: string;
+    accent: string;
+    subtitle: string;
+    primaryLabel: string;
+    primaryHref: string;
+    secondaryLabel: string;
+    secondaryHref: string;
+  };
+  announcements: string[];
+  contact: {
+    phone: string;
+    email: string;
+    address: string;
+    hours: string;
+  };
+  social: {
+    facebook: string;
+    instagram: string;
+    threads: string;
+  };
 }

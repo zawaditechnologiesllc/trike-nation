@@ -14,7 +14,7 @@ const NAV = [
   { href: "/shop", label: "Shop All" },
 ];
 
-export default function Header() {
+export default function Header({ announcements = [] }: { announcements?: string[] }) {
   const { count } = useCart();
   const { user, enabled } = useAuth();
   const [open, setOpen] = useState(false);
@@ -84,19 +84,17 @@ export default function Header() {
         </nav>
       )}
 
-      {pathname === "/" && (
+      {pathname === "/" && announcements.length > 0 && (
         <div className="overflow-hidden border-t border-crimson/40 bg-coal py-2">
           <div className="animate-marquee flex w-max whitespace-nowrap">
             {[0, 1].map((n) => (
               <span key={n} className="label-caps flex gap-8 pr-8 text-silver">
-                <span>
-                  Use the coupon <span className="text-ember">BIKEMIKE26</span> for 10% discount
-                </span>
-                <span className="text-crimson">•</span>
-                <span>Black Friday Madness — up to 20% off</span>
-                <span className="text-crimson">•</span>
-                <span>Now shipping worldwide</span>
-                <span className="text-crimson">•</span>
+                {announcements.map((text) => (
+                  <span key={text} className="flex gap-8">
+                    <span>{text}</span>
+                    <span className="text-crimson">•</span>
+                  </span>
+                ))}
               </span>
             ))}
           </div>

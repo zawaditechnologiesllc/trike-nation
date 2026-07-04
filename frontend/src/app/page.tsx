@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { fetchCategories, fetchProducts, fetchTestimonials } from "@/lib/api";
+import { fetchCategories, fetchProducts, fetchSettings, fetchTestimonials } from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
 import NewsletterForm from "@/components/NewsletterForm";
 import Stars from "@/components/Stars";
@@ -26,12 +26,14 @@ const VALUE_PROPS = [
 ];
 
 export default async function HomePage() {
-  const [featured, categories, testimonials] = await Promise.all([
+  const [featured, categories, testimonials, settings] = await Promise.all([
     fetchProducts({ featured: true }),
     fetchCategories(),
     fetchTestimonials(),
+    fetchSettings(),
   ]);
   const fleet = categories.filter((c) => c.slug !== "spare-parts");
+  const { hero } = settings;
 
   return (
     <div>
@@ -45,27 +47,26 @@ export default async function HomePage() {
           className="object-cover opacity-40"
         />
         <div className="relative mx-auto max-w-7xl px-4 py-24 md:px-12 md:py-36">
-          <p className="label-caps text-blush">Handcrafted Performance</p>
+          <p className="label-caps text-blush">{hero.kicker}</p>
           <h1 className="display mt-4 max-w-3xl text-5xl leading-[0.95] md:text-8xl">
-            Trike Nation: <span className="text-ember">Adrenaline</span>
+            {hero.title} <span className="text-ember">{hero.accent}</span>
           </h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-chrome">
-            Engineered for the bold. Experience the raw energy of high-performance mini trikes and
-            drift karts built for ultimate durability and speed.
-          </p>
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-chrome">{hero.subtitle}</p>
           <div className="mt-10 flex flex-wrap gap-4">
             <Link
-              href="/shop"
+              href={hero.primaryHref || "/shop"}
               className="display glow-red bg-crimson px-8 py-4 text-lg text-offwhite transition-colors hover:bg-ember"
             >
-              Shop the Fleet
+              {hero.primaryLabel}
             </Link>
-            <Link
-              href="/contact"
-              className="display border-2 border-chrome px-8 py-4 text-lg text-chrome transition-colors hover:border-ember hover:text-ember"
-            >
-              Custom Orders
-            </Link>
+            {hero.secondaryLabel && (
+              <Link
+                href={hero.secondaryHref || "/contact"}
+                className="display border-2 border-chrome px-8 py-4 text-lg text-chrome transition-colors hover:border-ember hover:text-ember"
+              >
+                {hero.secondaryLabel}
+              </Link>
+            )}
           </div>
         </div>
       </section>

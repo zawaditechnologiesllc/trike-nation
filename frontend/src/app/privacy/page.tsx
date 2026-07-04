@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import PageShell, { Section } from "@/components/PageShell";
-import { CONTACT } from "@/lib/catalog";
+import { fetchSettings } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Privacy Policy" };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const { contact } = await fetchSettings();
   return (
     <PageShell kicker="Legal" title="Privacy Policy">
       <p className="font-mono text-xs text-silver">Last updated: November 2024</p>
@@ -32,7 +33,7 @@ export default function PrivacyPage() {
       <Section title="Your Rights">
         <p>
           You can request a copy of your data, correct it, or ask us to delete your account and
-          order history at any time by emailing <strong>{CONTACT.email}</strong>. We respond to all
+          order history at any time by emailing <strong>{contact.email}</strong>. We respond to all
           requests within 30 days.
         </p>
       </Section>

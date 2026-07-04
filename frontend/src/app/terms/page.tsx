@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import PageShell, { Section } from "@/components/PageShell";
-import { CONTACT } from "@/lib/catalog";
+import { fetchSettings } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Terms of Service" };
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const { contact } = await fetchSettings();
   return (
     <PageShell kicker="Legal" title="Terms of Service">
       <p className="font-mono text-xs text-silver">Last updated: November 2024</p>
@@ -40,7 +41,7 @@ export default function TermsPage() {
       <Section title="Questions">
         <p>
           These terms are governed by the laws of the State of California. Questions? Email{" "}
-          <strong>{CONTACT.email}</strong>.
+          <strong>{contact.email}</strong>.
         </p>
       </Section>
     </PageShell>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Anton, JetBrains_Mono, Manrope } from "next/font/google";
 import { CartProvider } from "@/lib/cart";
 import { AuthProvider } from "@/lib/auth";
+import { fetchSettings } from "@/lib/api";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import "./globals.css";
@@ -19,15 +20,16 @@ export const metadata: Metadata = {
     "Engineered for the bold. High-performance mini trikes, drift karts, mini bikes, and quads built for ultimate durability and speed.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const settings = await fetchSettings();
   return (
     <html lang="en" className={`${anton.variable} ${manrope.variable} ${jetbrains.variable}`}>
       <body className="min-h-screen antialiased">
         <AuthProvider>
           <CartProvider>
-            <Header />
+            <Header announcements={settings.announcements} />
             <main>{children}</main>
-            <Footer />
+            <Footer contact={settings.contact} social={settings.social} />
           </CartProvider>
         </AuthProvider>
       </body>

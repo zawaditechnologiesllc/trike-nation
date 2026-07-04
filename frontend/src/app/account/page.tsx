@@ -43,8 +43,7 @@ export default function AccountPage() {
       <div className="mx-auto max-w-md px-4 py-24 text-center">
         <h1 className="display text-4xl">Account</h1>
         <p className="mt-6 border border-dashed border-steel-light p-6 font-mono text-xs leading-relaxed text-silver">
-          Auth is not configured yet. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
-          to enable accounts. See the project README for setup.
+          Accounts are temporarily unavailable. Please try again shortly or contact support.
         </p>
       </div>
     );

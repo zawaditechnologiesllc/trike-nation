@@ -1,6 +1,6 @@
 import Link from "next/link";
 import NewsletterForm from "./NewsletterForm";
-import { CONTACT } from "@/lib/catalog";
+import type { SiteSettings } from "@/lib/types";
 
 const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] = [
   {
@@ -23,7 +23,13 @@ const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] =
   },
 ];
 
-export default function Footer() {
+export default function Footer({
+  contact,
+  social,
+}: {
+  contact: SiteSettings["contact"];
+  social: SiteSettings["social"];
+}) {
   return (
     <footer className="border-t-2 border-crimson bg-coal">
       <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 md:grid-cols-4 md:px-12">
@@ -59,9 +65,9 @@ export default function Footer() {
             <NewsletterForm compact />
           </div>
           <p className="mt-6 font-mono text-xs text-silver">
-            {CONTACT.phone}
+            {contact.phone}
             <br />
-            {CONTACT.email}
+            {contact.email}
           </p>
         </div>
       </div>
@@ -70,9 +76,21 @@ export default function Footer() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-6 font-mono text-xs text-silver md:flex-row md:px-12">
           <p>© 2024 TRIKE NATION. ENGINEERED FOR ADRENALINE.</p>
           <div className="flex gap-6">
-            <span className="hover:text-ember">Facebook</span>
-            <span className="hover:text-ember">Instagram</span>
-            <span className="hover:text-ember">Threads</span>
+            {social.facebook && (
+              <a href={social.facebook} className="hover:text-ember" target="_blank" rel="noreferrer">
+                Facebook
+              </a>
+            )}
+            {social.instagram && (
+              <a href={social.instagram} className="hover:text-ember" target="_blank" rel="noreferrer">
+                Instagram
+              </a>
+            )}
+            {social.threads && (
+              <a href={social.threads} className="hover:text-ember" target="_blank" rel="noreferrer">
+                Threads
+              </a>
+            )}
           </div>
         </div>
       </div>

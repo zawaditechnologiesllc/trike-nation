@@ -2,19 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/lib/auth";
 import { money } from "@/lib/format";
-import { placeOrder, validateDiscount } from "@/lib/api";
+import { fetchPaymentsConfig, placeOrder, validateDiscount } from "@/lib/api";
+import type { PaymentProvider, PaymentsConfig } from "@/lib/types";
 
 const STEPS = ["01 Shipping", "02 Payment", "03 Review"];
 
 export default function CheckoutPage() {
-  const { items, subtotalCents, clear } = useCart();
+  const { items, subtotalCents } = useCart();
   const { user, session } = useAuth();
-  const router = useRouter();
 
   const [form, setForm] = useState({
     firstName: "",
@@ -23,17 +22,32 @@ export default function CheckoutPage() {
     city: "",
     zip: "",
     phone: "",
-    email: user?.email ?? "",
+    email: "",
   });
-  const [payment, setPayment] = useState<"card" | "paypal">("card");
+  const [payments, setPayments] = useState<PaymentsConfig | null>(null);
+  const [provider, setProvider] = useState<PaymentProvider | null>(null);
   const [code, setCode] = useState("");
   const [percentOff, setPercentOff] = useState(0);
   const [codeMsg, setCodeMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [cancelled, setCancelled] = useState(false);
+
+  useEffect(() => {
+    fetchPaymentsConfig().then((config) => {
+      setPayments(config);
+      setProvider(config.stripe ? "stripe" : config.paypal ? "paypal" : null);
+    });
+    setCancelled(new URLSearchParams(window.location.search).get("cancelled") === "1");
+  }, []);
+
+  useEffect(() => {
+    if (user?.email) setForm((f) => (f.email ? f : { ...f, email: user.email! }));
+  }, [user]);
 
   const discountCents = Math.round((subtotalCents * percentOff) / 100);
   const totalCents = subtotalCents - discountCents;
+  const noProviders = payments !== null && !payments.stripe && !payments.paypal;
 
   function set(field: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [field]: e.target.value });
@@ -52,23 +66,24 @@ export default function CheckoutPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (items.length === 0) return;
+    if (items.length === 0 || !provider) return;
     setSubmitting(true);
     setError("");
     try {
       const order = await placeOrder({
         items,
-        shipping: { ...form, email: form.email || user?.email || "" },
+        shipping: form,
+        provider,
         discountCode: percentOff ? code.trim().toUpperCase() : undefined,
         accessToken: session?.access_token,
       });
-      clear();
-      const qs = new URLSearchParams({
-        id: order.id,
-        total: String(order.totalCents),
-        ...(order.demo ? { demo: "1" } : {}),
-      });
-      router.push(`/checkout/success?${qs}`);
+      if (order.redirectUrl) {
+        // Off to Stripe Checkout / PayPal approval. The cart is cleared on
+        // the success page, after payment — so a cancelled payment keeps it.
+        window.location.assign(order.redirectUrl);
+        return;
+      }
+      throw new Error("Payment session did not return a redirect");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Order failed. Try again.");
       setSubmitting(false);
@@ -101,6 +116,12 @@ export default function CheckoutPage() {
           </span>
         ))}
       </div>
+
+      {cancelled && (
+        <p className="mt-6 border border-steel-light bg-carbon p-4 font-mono text-xs text-chrome">
+          Payment cancelled — your build is still staged below. Pick a payment method to try again.
+        </p>
+      )}
 
       <form onSubmit={submit} className="mt-12 grid gap-10 lg:grid-cols-[1fr_420px]">
         <div className="space-y-8">
@@ -149,29 +170,41 @@ export default function CheckoutPage() {
           {/* Payment */}
           <fieldset className="border border-steel bg-carbon p-6 md:p-8">
             <legend className="display border-l-4 border-crimson px-3 text-2xl">Payment Method</legend>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {(
-                [
-                  { id: "card", label: "Secure Card Payment" },
-                  { id: "paypal", label: "PayPal" },
-                ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setPayment(opt.id)}
-                  className={`label-caps border px-4 py-4 text-left transition-colors ${
-                    payment === opt.id
-                      ? "border-crimson bg-night text-offwhite"
-                      : "border-steel text-silver hover:border-crimson"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            {payments === null ? (
+              <p className="label-caps mt-6 text-silver">Loading payment methods…</p>
+            ) : noProviders ? (
+              <p className="mt-6 border border-crimson bg-crimson/10 p-4 font-mono text-xs text-ember">
+                Online payment is temporarily unavailable. Please try again shortly or contact
+                support to complete your order.
+              </p>
+            ) : (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                {(
+                  [
+                    { id: "stripe" as const, label: "Card (Stripe Checkout)", enabled: payments.stripe },
+                    { id: "paypal" as const, label: "PayPal", enabled: payments.paypal },
+                  ]
+                ).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    disabled={!opt.enabled}
+                    onClick={() => setProvider(opt.id)}
+                    className={`label-caps border px-4 py-4 text-left transition-colors ${
+                      provider === opt.id
+                        ? "border-crimson bg-night text-offwhite"
+                        : "border-steel text-silver hover:border-crimson"
+                    } ${!opt.enabled ? "cursor-not-allowed opacity-40" : ""}`}
+                  >
+                    {opt.label}
+                    {!opt.enabled && <span className="ml-2 text-silver">(unavailable)</span>}
+                  </button>
+                ))}
+              </div>
+            )}
             <p className="label-caps mt-4 text-silver">
-              Payment is captured after order review — no charge is made on this step.
+              You&apos;ll be redirected to complete payment securely — card details never touch our
+              servers.
             </p>
           </fieldset>
 
@@ -181,10 +214,10 @@ export default function CheckoutPage() {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !provider}
             className="display glow-red w-full bg-crimson py-5 text-xl text-offwhite transition-colors hover:bg-ember disabled:opacity-50"
           >
-            {submitting ? "Placing Order…" : "Place Order"}
+            {submitting ? "Starting Secure Payment…" : `Pay ${money(totalCents)}`}
           </button>
         </div>
 

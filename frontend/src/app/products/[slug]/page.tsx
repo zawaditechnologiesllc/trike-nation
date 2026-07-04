@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchProduct, fetchProducts, fetchTestimonials } from "@/lib/api";
-import { PRODUCTS, getCategory } from "@/lib/catalog";
+import { fetchCategories, fetchProduct, fetchProducts, fetchTestimonials } from "@/lib/api";
 import { money } from "@/lib/format";
 import AddToCartButton from "@/components/AddToCartButton";
 import Badge from "@/components/Badge";
@@ -12,9 +11,7 @@ import SpecList from "@/components/SpecList";
 import Stars from "@/components/Stars";
 import ProductCard from "@/components/ProductCard";
 
-export function generateStaticParams() {
-  return PRODUCTS.map((p) => ({ slug: p.slug }));
-}
+export const revalidate = 60;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -28,9 +25,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = await fetchProduct(slug);
   if (!product) notFound();
 
-  const [all, testimonials] = await Promise.all([fetchProducts(), fetchTestimonials()]);
+  const [all, testimonials, categories] = await Promise.all([
+    fetchProducts(),
+    fetchTestimonials(),
+    fetchCategories(),
+  ]);
   const related = all.filter((p) => p.slug !== product.slug).slice(0, 4);
-  const category = getCategory(product.category);
+  const category = categories.find((c) => c.slug === product.category);
   const savings =
     product.compareAtCents && product.compareAtCents > product.priceCents
       ? product.compareAtCents - product.priceCents

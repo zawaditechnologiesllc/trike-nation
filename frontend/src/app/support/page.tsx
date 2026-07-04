@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PageShell, { Section } from "@/components/PageShell";
-import { CONTACT } from "@/lib/catalog";
+import { fetchSettings } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Support" };
 
-export default function SupportPage() {
+export default async function SupportPage() {
+  const { contact } = await fetchSettings();
   return (
     <PageShell kicker="We've Got Your Back" title="Support">
       <Section title="Getting Help">
         <p>
           Every Trike Nation machine ships with a printed manual and a maintenance tool kit. For
-          anything the manual doesn&apos;t cover, reach us at <strong>{CONTACT.email}</strong> or{" "}
-          <strong>{CONTACT.phone}</strong> — most technical questions are answered same-day.
+          anything the manual doesn&apos;t cover, reach us at <strong>{contact.email}</strong> or{" "}
+          <strong>{contact.phone}</strong> — most technical questions are answered same-day.
         </p>
       </Section>
       <Section title="Assembly & First Ride">

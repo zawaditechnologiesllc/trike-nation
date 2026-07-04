@@ -10,9 +10,28 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     envVars:
+      # Set the secret values in the Render dashboard after the first deploy.
       - key: SUPABASE_URL
-        sync: false # set in the Render dashboard
+        sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false # set in the Render dashboard (keep secret)
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: "Trike Nation <orders@trike-nation.com>"
+      - key: ADMIN_EMAIL
+        value: support@trike-nation.com
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_ENV
+        value: live
+      - key: FRONTEND_URL
+        sync: false # your Vercel URL, e.g. https://trike-nation.vercel.app
       - key: CORS_ORIGIN
-        value: "*" # tighten to your Vercel URL after first deploy
+        sync: false # same as FRONTEND_URL (comma-separate to allow more)

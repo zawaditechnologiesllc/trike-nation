@@ -57,8 +57,7 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
 
       {!supabase ? (
         <div className="mt-10 border border-dashed border-steel-light p-6 font-mono text-xs leading-relaxed text-silver">
-          Auth is not configured yet. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
-          to enable email/password sign-in. See the project README for setup.
+          Sign-in is temporarily unavailable. Please try again shortly or contact support.
         </div>
       ) : (
         <form onSubmit={submit} className="mt-10 space-y-6">
