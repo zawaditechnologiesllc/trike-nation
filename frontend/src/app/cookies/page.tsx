@@ -29,8 +29,8 @@ export default async function CookiesPage() {
           <strong>Cart contents</strong> live in your browser&apos;s local storage so your build
           survives a page refresh. <strong>Sign-in sessions</strong> are stored by our
           authentication provider (Supabase) to keep you logged in. During checkout,
-          <strong> Stripe or PayPal</strong> set their own cookies on their hosted payment pages,
-          governed by their respective privacy policies.
+          <strong> Stripe</strong> sets its own cookies on its hosted payment page, governed by
+          Stripe&apos;s privacy policy.
         </p>
       </Section>
       <Section title="Managing Storage">

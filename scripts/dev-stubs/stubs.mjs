@@ -61,11 +61,29 @@ const tables = {
   ],
   orders: [],
   order_items: [],
+  order_events: [],
+  system_state: [],
   contact_messages: [],
 };
 
 const DEFAULTS = {
-  orders: () => ({ id: randomUUID(), created_at: now(), status: "pending_payment", payment_status: "unpaid", payment_provider: null, payment_ref: null, tracking_number: null, admin_notes: null, discount_code: null, user_id: null }),
+  orders: () => ({
+    id: randomUUID(), created_at: now(), status: "pending_payment", payment_status: "unpaid",
+    payment_provider: null, payment_ref: null, tracking_number: null, admin_notes: null,
+    discount_code: null, user_id: null, currency: "usd", stripe_session_id: null,
+    stripe_payment_intent_id: null, stripe_charge_id: null, stripe_reported_status: null,
+    stripe_amount_total_cents: null, stripe_checked_at: null, stripe_receipt_url: null,
+    confirmed_by: null, confirmed_by_email: null, paid_at: null, processing_at: null,
+    shipped_at: null, delivered_at: null, cancelled_at: null, refunded_at: null,
+    refunded_cents: null, delivery_updates_sent: [], last_delivery_update_at: null,
+    account_invite_sent_at: null, account_linked_at: null, last_notified_at: null,
+  }),
+  order_events: () => ({
+    id: randomUUID(), created_at: now(), type: "status_change", from_status: null,
+    to_status: null, message: "", notified: false, email_to: null, email_subject: null,
+    actor_id: null, actor_email: null, metadata: {},
+  }),
+  system_state: () => ({ updated_at: now(), value: {} }),
   order_items: () => ({ id: randomUUID() }),
   products: () => ({ id: randomUUID(), created_at: now(), compare_at_cents: null, badges: [], blurb: "", description: "", engine_size: "N/A", specs: [], box_contents: [], features: [], image: "", featured: false, in_stock: true }),
   contact_messages: () => ({ id: randomUUID(), read: false, created_at: now(), subject: "" }),
@@ -100,19 +118,89 @@ function html(res, body) {
 // Supabase stub (:4600)
 // ---------------------------------------------------------------------------
 
+/** Turns a PostgREST `<op>.<value>` filter into a predicate. */
+function predicate(column, expression) {
+  const dot = expression.indexOf(".");
+  const op = dot === -1 ? expression : expression.slice(0, dot);
+  const raw = dot === -1 ? "" : expression.slice(dot + 1);
+  const cell = (row) => row[column];
+  const text = (row) => (cell(row) == null ? "" : String(cell(row)));
+  const unquote = (v) => v.replace(/^"(.*)"$/, "$1");
+
+  switch (op) {
+    case "eq":
+      return (row) => text(row) === raw;
+    case "neq":
+      return (row) => text(row) !== raw;
+    case "gt":
+      return (row) => text(row) > raw;
+    case "gte":
+      return (row) => text(row) >= raw;
+    case "lt":
+      return (row) => text(row) < raw;
+    case "lte":
+      return (row) => text(row) <= raw;
+    case "like":
+    case "ilike": {
+      const pattern = new RegExp(
+        `^${raw.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/%/g, ".*")}$`,
+        op === "ilike" ? "i" : "",
+      );
+      return (row) => pattern.test(text(row));
+    }
+    case "is": {
+      if (raw === "null") return (row) => cell(row) == null;
+      if (raw === "true") return (row) => cell(row) === true;
+      if (raw === "false") return (row) => cell(row) === false;
+      return () => true;
+    }
+    case "in": {
+      const wanted = new Set(
+        raw.replace(/^\(|\)$/g, "").split(",").map((v) => unquote(v.trim())),
+      );
+      return (row) => wanted.has(text(row));
+    }
+    case "not": {
+      const inner = predicate(column, raw);
+      return (row) => !inner(row);
+    }
+    default:
+      return () => true;
+  }
+}
+
+/** `or=(a.eq.1,b.is.null)` — only the flat form the backend actually uses. */
+function orPredicate(expression) {
+  const inner = expression.replace(/^\(|\)$/g, "");
+  const clauses = inner.split(",").map((clause) => {
+    const dot = clause.indexOf(".");
+    return predicate(clause.slice(0, dot), clause.slice(dot + 1));
+  });
+  return (row) => clauses.some((match) => match(row));
+}
+
+const RESERVED_PARAMS = ["select", "order", "limit", "offset", "on_conflict", "columns"];
+
 function applyFilters(rows, params) {
   let out = [...rows];
   for (const [key, value] of params) {
-    if (["select", "order", "limit", "on_conflict", "columns"].includes(key)) continue;
-    if (value.startsWith("eq.")) {
-      const want = value.slice(3);
-      out = out.filter((r) => String(r[key]) === want);
+    if (RESERVED_PARAMS.includes(key)) continue;
+    if (key === "or") {
+      out = out.filter(orPredicate(value));
+      continue;
     }
+    out = out.filter(predicate(key, value));
   }
   const order = params.get("order");
   if (order) {
-    const [col, dir] = order.split(".");
-    out.sort((a, b) => (a[col] < b[col] ? -1 : a[col] > b[col] ? 1 : 0) * (dir === "desc" ? -1 : 1));
+    for (const clause of order.split(",").reverse()) {
+      const [col, dir] = clause.split(".");
+      out.sort((a, b) => {
+        const av = a[col] ?? "";
+        const bv = b[col] ?? "";
+        return (av < bv ? -1 : av > bv ? 1 : 0) * (dir === "desc" ? -1 : 1);
+      });
+    }
   }
   const limit = params.get("limit");
   if (limit) out = out.slice(0, Number(limit));
@@ -186,8 +274,17 @@ const supabaseStub = createServer(async (req, res) => {
   const params = url.searchParams;
   const prefer = String(req.headers.prefer ?? "");
 
-  if (req.method === "GET") {
-    return respondRows(req, res, applyFilters(table, params));
+  if (req.method === "GET" || req.method === "HEAD") {
+    const rows = applyFilters(table, params);
+    // `select("id", { count: "exact", head: true })` asks for a count only.
+    if (prefer.includes("count=")) {
+      res.setHeader("Content-Range", `0-${Math.max(0, rows.length - 1)}/${rows.length}`);
+    }
+    if (req.method === "HEAD") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end();
+    }
+    return respondRows(req, res, rows);
   }
   if (req.method === "POST") {
     const payload = JSON.parse(body.toString() || "{}");
@@ -247,6 +344,33 @@ const stripeStub = createServer(async (req, res) => {
 
   if (url.pathname === "/v1/coupons" && req.method === "POST") {
     return json(res, 200, { id: `coup_${Date.now()}`, object: "coupon" });
+  }
+  // Account probe used by the admin System page.
+  if (url.pathname === "/v1/account" && req.method === "GET") {
+    return json(res, 200, {
+      id: "acct_stub",
+      object: "account",
+      charges_enabled: true,
+      business_profile: { name: "Go Cart Grip (stub)" },
+      settings: { dashboard: { display_name: "Go Cart Grip (stub)" } },
+    });
+  }
+  // Refunds issued from the admin order page.
+  if (url.pathname === "/v1/refunds" && req.method === "POST") {
+    const form = new URLSearchParams(body);
+    const intent = form.get("payment_intent");
+    const session = [...stripeSessions.entries()].find(
+      ([id]) => `pi_stub_${id.slice(-8)}` === intent,
+    );
+    const amount = Number(form.get("amount") ?? session?.[1]?.amountTotal ?? 0);
+    console.log(`[stripe-stub] refunded ${amount} on ${intent}`);
+    return json(res, 200, {
+      id: `re_stub_${Date.now()}`,
+      object: "refund",
+      status: "succeeded",
+      amount,
+      payment_intent: intent,
+    });
   }
   if (url.pathname === "/v1/checkout/sessions" && req.method === "POST") {
     const form = new URLSearchParams(body);
@@ -335,6 +459,10 @@ const resendStub = createServer(async (req, res) => {
     return json(res, 200, { id: `email_${Date.now()}` });
   }
   if (url.pathname === "/sent") return json(res, 200, sentEmails);
+  // Domain listing used by the admin System page's Resend health check.
+  if (url.pathname === "/domains" && req.method === "GET") {
+    return json(res, 200, { data: [{ id: "dom_stub", name: "gocartgrip.shop", status: "verified" }] });
+  }
   json(res, 404, {});
 });
 
