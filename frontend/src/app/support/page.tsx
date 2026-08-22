@@ -11,7 +11,7 @@ export default async function SupportPage() {
     <PageShell kicker="We've Got Your Back" title="Support">
       <Section title="Getting Help">
         <p>
-          Every Trike Nation machine ships with a printed manual and a maintenance tool kit. For
+          Every Go Cart Grip machine ships with a printed manual and a maintenance tool kit. For
           anything the manual doesn&apos;t cover, reach us at <strong>{contact.email}</strong> or{" "}
           <strong>{contact.phone}</strong> — most technical questions are answered same-day.
         </p>

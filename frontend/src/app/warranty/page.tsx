@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import PageShell, { Section } from "@/components/PageShell";
 import SpecList from "@/components/SpecList";
 import { fetchSettings } from "@/lib/api";
+import { EMAILS } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Warranty" };
 
@@ -37,9 +38,10 @@ export default async function WarrantyPage() {
       </Section>
       <Section title="Making a Claim">
         <p>
-          Email <strong>{contact.email}</strong> with your order number, photos or video of the
-          issue, and a short description. Claims are acknowledged within one business day and
-          approved claims ship parts within 48 hours.
+          Email <strong>{EMAILS.warranty}</strong> with your order number, photos or video of the
+          issue, and a short description (copy <strong>{contact.email}</strong> if it is urgent).
+          Claims are acknowledged within one business day and approved claims ship parts within 48
+          hours.
         </p>
       </Section>
     </PageShell>

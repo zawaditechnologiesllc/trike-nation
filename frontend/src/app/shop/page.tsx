@@ -64,7 +64,7 @@ export default async function ShopPage({
                 The Joy of <span className="text-ember">Adrenaline</span>
               </h2>
               <p className="mt-4 leading-relaxed text-silver">
-                Every machine that leaves Trike Nation is over-engineered for durability. We combine
+                Every machine that leaves Go Cart Grip is over-engineered for durability. We combine
                 high-output 4-stroke engines with precision-welded frames for the ultimate ride.
               </p>
               <div className="mt-8">

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { BRAND } from "@/lib/brand";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/lib/auth";
 
@@ -45,7 +46,7 @@ export default function Header({
     <header className="sticky top-0 z-50 border-b border-steel bg-night/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-12">
         <Link href="/" className="display text-2xl leading-none text-crimson hover:text-ember">
-          Trike Nation
+          {BRAND.name}
         </Link>
 
         <nav className="hidden items-center gap-7 lg:flex">

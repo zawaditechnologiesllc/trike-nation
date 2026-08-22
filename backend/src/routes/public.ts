@@ -83,7 +83,7 @@ publicRouter.post("/newsletter", async (req, res) => {
   const { error } = await db().from("newsletter_subscribers").upsert({ email }, { onConflict: "email" });
   if (error) return res.status(500).json({ error: "Subscription failed" });
   void sendNewsletterWelcome(email);
-  res.json({ ok: true, message: "You're in. Welcome to the Nation." });
+  res.json({ ok: true, message: "You're in. Welcome to the Crew." });
 });
 
 publicRouter.post("/contact", async (req, res) => {

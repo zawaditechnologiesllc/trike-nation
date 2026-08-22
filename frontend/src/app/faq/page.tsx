@@ -10,7 +10,7 @@ const FAQS = [
   },
   {
     q: "Are these street legal?",
-    a: "No. Trike Nation machines are built for private property, closed courses, and off-road use. Always check local regulations and wear a DOT-approved helmet.",
+    a: "No. Go Cart Grip machines are built for private property, closed courses, and off-road use. Always check local regulations and wear a DOT-approved helmet.",
   },
   {
     q: "What engine do you use?",
@@ -25,8 +25,16 @@ const FAQS = [
     a: "Yes — we ship worldwide, free of charge. Freight machines (quads, buggies) ship palletized with liftgate delivery. Taxes and duties are calculated at checkout.",
   },
   {
+    q: "How long does delivery take?",
+    a: "12 to 30 days from confirmed payment, depending on destination — machines are built to order before they crate. We email you progress updates on day 7, day 12, and day 20, and again every time your order status changes.",
+  },
+  {
+    q: "When is my payment confirmed?",
+    a: "Every order is reviewed and confirmed by a human on our side, usually within one business day, so you get an email from a real person rather than an automated flag. Your card is charged by Stripe at checkout; the build queue starts once we confirm.",
+  },
+  {
     q: "How do drift sleeves work?",
-    a: "Our proprietary PVC sleeves slide over the rear wheels to reduce traction for controlled drifting. Every Viper includes two replacement sleeves; the Drift Sleeve Master Kit fits all Trike Nation drift models.",
+    a: "Our proprietary PVC sleeves slide over the rear wheels to reduce traction for controlled drifting. Every Viper includes two replacement sleeves; the Drift Sleeve Master Kit fits all Go Cart Grip drift models.",
   },
   {
     q: "What discount codes are active?",

@@ -103,7 +103,7 @@ function svg({ title, sub, kind, accent = CRIMSON, w = 800, h = 450 }) {
   ${art}
   <text x="400" y="70" text-anchor="middle" font-family="'Arial Black', Arial, sans-serif" font-weight="900" font-size="30" letter-spacing="4" fill="${OFFWHITE}">${title.toUpperCase()}</text>
   ${sub ? `<text x="400" y="100" text-anchor="middle" font-family="'Courier New', monospace" font-weight="700" font-size="15" letter-spacing="5" fill="${SILVER}">${sub.toUpperCase()}</text>` : ""}
-  <text x="24" y="432" font-family="'Courier New', monospace" font-size="12" letter-spacing="3" fill="${SILVER}">TRIKE NATION // ENGINEERED FOR ADRENALINE</text>
+  <text x="24" y="432" font-family="'Courier New', monospace" font-size="12" letter-spacing="3" fill="${SILVER}">GO CART GRIP // ENGINEERED FOR ADRENALINE</text>
 </svg>`;
 }
 

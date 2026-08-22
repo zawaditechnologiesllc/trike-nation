@@ -1,8 +1,8 @@
-# Render Blueprint — deploys the Trike Nation API.
+# Render Blueprint — deploys the Go Cart Grip API.
 # https://render.com/docs/blueprint-spec
 services:
   - type: web
-    name: trike-nation-api
+    name: gocartgrip-api
     runtime: node
     plan: free
     rootDir: backend
@@ -18,9 +18,9 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
-        value: "Trike Nation <orders@trike-nation.com>"
+        value: "Go Cart Grip <orders@gocartgrip.shop>"
       - key: ADMIN_EMAIL
-        value: support@trike-nation.com
+        value: support@gocartgrip.shop
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
@@ -32,6 +32,6 @@ services:
       - key: PAYPAL_ENV
         value: live
       - key: FRONTEND_URL
-        sync: false # your Vercel URL, e.g. https://trike-nation.vercel.app
+        sync: false # your Vercel URL, e.g. https://gocartgrip.vercel.app
       - key: CORS_ORIGIN
         sync: false # same as FRONTEND_URL (comma-separate to allow more)

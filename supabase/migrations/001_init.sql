@@ -1,4 +1,4 @@
--- Trike Nation — initial schema.
+-- Go Cart Grip — initial schema.
 -- Run in the Supabase SQL editor (or `supabase db push`) before seed.sql.
 
 create extension if not exists "pgcrypto";

@@ -7,10 +7,10 @@ export const metadata: Metadata = { title: "About" };
 
 export default function AboutPage() {
   return (
-    <PageShell kicker="Engineered for Adrenaline" title={<>About Trike Nation</>}>
+    <PageShell kicker="Engineered for Adrenaline" title={<>About Go Cart Grip</>}>
       <Section title="Our Story">
         <p>
-          Trike Nation started in a two-car garage in Sacramento, California, with one welded frame,
+          Go Cart Grip started in a two-car garage in Sacramento, California, with one welded frame,
           one 200cc engine, and a simple belief: small machines can deliver huge adrenaline. Today
           every trike, kart, minibike, and quad we ship is still individually assembled and
           stress-tested in our California facility.
@@ -22,7 +22,7 @@ export default function AboutPage() {
       </Section>
       <Section title="How We Build">
         <p>
-          Every machine that leaves Trike Nation is over-engineered for durability. We combine
+          Every machine that leaves Go Cart Grip is over-engineered for durability. We combine
           high-output 4-stroke engines with precision-welded frames for the ultimate ride.
         </p>
         <SpecList
@@ -34,16 +34,16 @@ export default function AboutPage() {
           ]}
         />
       </Section>
-      <Section title="The Nation">
+      <Section title="The Crew">
         <p>
-          More than a store, Trike Nation is a community of riders, builders, and drifters. Join the
+          More than a store, Go Cart Grip is a community of riders, builders, and drifters. Join the
           newsletter for exclusive drops, racing events, and technical builds delivered to your
           garage.
         </p>
       </Section>
       <Image
         src="/images/hero-garage.svg"
-        alt="The Trike Nation garage"
+        alt="The Go Cart Grip garage"
         width={1600}
         height={900}
         className="border border-steel"

@@ -44,7 +44,7 @@ export default function AdminMessagesPage() {
             </p>
             <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-chrome">{msg.message}</p>
             <div className="mt-4 flex gap-4">
-              <a href={`mailto:${msg.email}?subject=Re: ${encodeURIComponent(msg.subject || "Your message to Trike Nation")}`} className="label-caps text-ember hover:text-blush">
+              <a href={`mailto:${msg.email}?subject=Re: ${encodeURIComponent(msg.subject || "Your message to Go Cart Grip")}`} className="label-caps text-ember hover:text-blush">
                 Reply by Email
               </a>
               <button onClick={() => markRead(msg)} className="label-caps text-chrome hover:text-ember">

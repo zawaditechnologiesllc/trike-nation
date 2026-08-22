@@ -47,7 +47,7 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
     <div className="mx-auto max-w-md px-4 py-20">
       <p className="label-caps text-blush">{isLogin ? "Rider Access" : "Enlist Now"}</p>
       <h1 className="display mt-2 text-4xl md:text-5xl">
-        {isLogin ? "Sign In" : "Join the Nation"}
+        {isLogin ? "Sign In" : "Join the Crew"}
       </h1>
       <p className="mt-4 text-sm text-silver">
         {isLogin
@@ -67,7 +67,7 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
               type="email"
               required
               className="input-tech mt-2"
-              placeholder="rider@trike-nation.com"
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -101,7 +101,7 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
       <p className="mt-8 text-center font-mono text-xs text-silver">
         {isLogin ? (
           <>
-            New to the Nation?{" "}
+            New to Go Cart Grip?{" "}
             <Link href="/signup" className="text-ember hover:text-blush">
               Create an account
             </Link>

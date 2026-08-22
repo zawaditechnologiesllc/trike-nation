@@ -1,5 +1,6 @@
 import Link from "next/link";
 import NewsletterForm from "./NewsletterForm";
+import { BRAND, EMAILS } from "@/lib/brand";
 import type { SiteSettings } from "@/lib/types";
 
 interface NavCategory {
@@ -47,7 +48,7 @@ export default function Footer({
     <footer className="border-t-2 border-crimson bg-coal">
       <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 md:grid-cols-2 md:px-12 xl:grid-cols-[1.4fr_1fr_1fr_1fr_1.4fr]">
         <div>
-          <p className="display text-3xl text-crimson">Trike Nation</p>
+          <p className="display text-3xl text-crimson">{BRAND.name}</p>
           <p className="mt-4 text-sm leading-relaxed text-silver">
             Engineered for adrenaline. Handcrafted mini trikes and quads built for those who never
             stop exploring.
@@ -65,6 +66,20 @@ export default function Footer({
               {contact.email}
             </a>
           </address>
+          <ul className="mt-4 space-y-1 font-mono text-xs text-silver">
+            {[
+              { label: "Orders", email: EMAILS.orders },
+              { label: "Support", email: EMAILS.support },
+              { label: "Warranty", email: EMAILS.warranty },
+            ].map((inbox) => (
+              <li key={inbox.email}>
+                <span className="text-steel-light">{inbox.label}:</span>{" "}
+                <a href={`mailto:${inbox.email}`} className="hover:text-ember">
+                  {inbox.email}
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div>
@@ -112,7 +127,7 @@ export default function Footer({
         </div>
 
         <div>
-          <p className="label-caps text-blush">Join the Nation</p>
+          <p className="label-caps text-blush">Join the Crew</p>
           <p className="mt-4 text-sm text-silver">
             Get adrenaline-fueled updates and exclusive early access.
           </p>
@@ -141,7 +156,10 @@ export default function Footer({
 
       <div className="border-t border-steel">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-6 font-mono text-xs text-silver md:flex-row md:px-12">
-          <p>© 2024 TRIKE NATION. ENGINEERED FOR ADRENALINE.</p>
+          <p>
+            © {new Date().getFullYear()} {BRAND.name.toUpperCase()} · {BRAND.domain.toUpperCase()} —
+            ENGINEERED FOR ADRENALINE.
+          </p>
           <div className="flex gap-6">
             <Link href="/privacy" className="hover:text-ember">
               Privacy Policy

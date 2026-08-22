@@ -28,11 +28,11 @@ const WEBHOOK_SECRET = process.env.STUB_STRIPE_WEBHOOK_SECRET ?? "whsec_stub";
 const now = () => new Date().toISOString();
 
 const USERS = {
-  "admin-token": { id: "00000000-0000-4000-8000-000000000001", email: "admin@trike-nation.com" },
+  "admin-token": { id: "00000000-0000-4000-8000-000000000001", email: "admin@gocartgrip.shop" },
   "rider-token": { id: "00000000-0000-4000-8000-000000000002", email: "rider@example.com" },
 };
 const PASSWORDS = {
-  "admin@trike-nation.com": { password: "admin-pass-123", token: "admin-token" },
+  "admin@gocartgrip.shop": { password: "admin-pass-123", token: "admin-token" },
   "rider@example.com": { password: "rider-pass-123", token: "rider-token" },
 };
 
@@ -55,7 +55,7 @@ const tables = {
   newsletter_subscribers: [],
   site_settings: [{ id: 1, ...siteSettings, updated_at: now() }],
   profiles: [
-    { id: USERS["admin-token"].id, email: "admin@trike-nation.com", first_name: null, last_name: null, is_admin: true, created_at: now() },
+    { id: USERS["admin-token"].id, email: "admin@gocartgrip.shop", first_name: null, last_name: null, is_admin: true, created_at: now() },
     { id: USERS["rider-token"].id, email: "rider@example.com", first_name: null, last_name: null, is_admin: false, created_at: now() },
   ],
   orders: [],

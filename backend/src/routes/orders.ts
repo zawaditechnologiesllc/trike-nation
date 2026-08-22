@@ -1,18 +1,31 @@
-import { Router, raw } from "express";
+import { Router } from "express";
 import { db, requireDb } from "../supabase";
+import { env } from "../env";
 import { getUserFromRequest } from "../auth";
 import { clampQty, computePricing, type PricedItem } from "../pricing";
 import { lookupDiscount } from "./public";
-import { createStripeCheckout, stripe, verifyStripeWebhook } from "../payments/stripe";
-import { capturePaypalOrder, createPaypalOrder, paypalEnabled } from "../payments/paypal";
-import { sendOrderConfirmation } from "../email";
+import { createStripeCheckout, stripe, stripeEnabled } from "../payments/stripe";
+import { sendAdminNewOrder, sendOrderReceived, type OrderEmailData } from "../email";
+import { claimOrdersForUser, getOrder, recordEvent, syncStripeSession } from "../orders/service";
 
 export const ordersRouter = Router();
-export const webhooksRouter = Router();
 
-/** Providers the storefront can offer at checkout. */
+/**
+ * Checkout is Stripe-only and webhook-free. Creating an order hands the buyer
+ * a hosted Checkout Session; when they come back, POST /orders/:id/sync pulls
+ * the real payment state from Stripe. Nothing here marks an order paid — an
+ * admin confirms every payment in /admin/orders.
+ */
+
 ordersRouter.get("/payments/config", (_req, res) => {
-  res.json({ stripe: Boolean(stripe), paypal: paypalEnabled() });
+  res.json({
+    stripe: stripeEnabled(),
+    publishableKey: env.stripePublishableKey ?? null,
+    currency: env.stripeCurrency,
+    // The storefront uses this to explain the manual-confirmation step.
+    manualApproval: true,
+    deliveryDays: { min: env.deliveryMinDays, max: env.deliveryMaxDays },
+  });
 });
 
 interface OrderItemInput {
@@ -25,7 +38,6 @@ const SHIPPING_FIELDS = ["firstName", "lastName", "address", "city", "zip", "pho
 ordersRouter.post("/orders", requireDb, async (req, res) => {
   const items = (req.body?.items ?? []) as OrderItemInput[];
   const shipping = req.body?.shipping ?? {};
-  const provider = String(req.body?.provider ?? "");
   const discountCode = req.body?.discountCode ? String(req.body.discountCode).toUpperCase() : undefined;
 
   if (!Array.isArray(items) || items.length === 0) {
@@ -36,11 +48,11 @@ ordersRouter.post("/orders", requireDb, async (req, res) => {
       return res.status(400).json({ error: `Missing shipping field: ${field}` });
     }
   }
-  if (provider === "stripe" && !stripe) return res.status(503).json({ error: "Stripe is not configured" });
-  if (provider === "paypal" && !paypalEnabled()) return res.status(503).json({ error: "PayPal is not configured" });
-  if (provider !== "stripe" && provider !== "paypal") {
-    return res.status(400).json({ error: "Choose a payment method (stripe or paypal)" });
+  const email = String(shipping.email).trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return res.status(400).json({ error: "A valid email address is required" });
   }
+  if (!stripe) return res.status(503).json({ error: "Card payment is not configured" });
 
   const user = await getUserFromRequest(req);
 
@@ -70,15 +82,16 @@ ordersRouter.post("/orders", requireDb, async (req, res) => {
     .from("orders")
     .insert({
       user_id: user?.id ?? null,
-      email: shipping.email,
-      shipping,
+      email,
+      shipping: { ...shipping, email },
       subtotal_cents: pricing.subtotalCents,
       discount_cents: pricing.discountCents,
       total_cents: pricing.totalCents,
       discount_code: pricing.percentOff ? discountCode : null,
       status: "pending_payment",
       payment_status: "unpaid",
-      payment_provider: provider,
+      payment_provider: "stripe",
+      currency: env.stripeCurrency,
     })
     .select("id")
     .single();
@@ -106,27 +119,54 @@ ordersRouter.post("/orders", requireDb, async (req, res) => {
   }
 
   try {
-    const redirect =
-      provider === "stripe"
-        ? await createStripeCheckout(order.id, shipping.email, priced, pricing.discountCents, discountCode)
-        : await createPaypalOrder(order.id, pricing.totalCents);
+    const checkout = await createStripeCheckout({
+      orderId: order.id,
+      email,
+      items: priced,
+      discountCents: pricing.discountCents,
+      discountCode,
+      shipping: { ...shipping, email },
+    });
     await db()
       .from("orders")
-      .update({ payment_ref: "sessionId" in redirect ? redirect.sessionId : redirect.paypalOrderId })
+      .update({ payment_ref: checkout.sessionId, stripe_session_id: checkout.sessionId })
       .eq("id", order.id);
+
+    await recordEvent({
+      orderId: order.id,
+      type: "note",
+      toStatus: "pending_payment",
+      message: "Order created and Stripe Checkout session opened.",
+      metadata: { stripe_session_id: checkout.sessionId },
+    });
+
+    // Receipt-of-order email now; the payment-confirmed email comes later,
+    // from an admin approving it.
+    const emailData: OrderEmailData = {
+      id: order.id,
+      items: priced.map((p) => ({ name: p.name, qty: p.qty, unitCents: p.unitCents })),
+      subtotalCents: pricing.subtotalCents,
+      discountCents: pricing.discountCents,
+      totalCents: pricing.totalCents,
+      discountCode: pricing.percentOff ? discountCode : null,
+    };
+    void sendOrderReceived(email, emailData);
+    void sendAdminNewOrder({ ...emailData, email });
+
     res.json({
       id: order.id,
       status: "pending_payment",
+      paymentStatus: "unpaid",
       subtotalCents: pricing.subtotalCents,
       discountCents: pricing.discountCents,
       totalCents: pricing.totalCents,
       discountCode: pricing.percentOff ? discountCode : undefined,
-      redirectUrl: redirect.redirectUrl,
+      redirectUrl: checkout.redirectUrl,
     });
   } catch (err) {
     console.error("payment session failed", err);
     await db().from("orders").update({ status: "cancelled", payment_status: "failed" }).eq("id", order.id);
-    res.status(502).json({ error: "Could not start the payment. Try again or use the other payment method." });
+    res.status(502).json({ error: "Could not start the payment. Try again in a moment." });
   }
 });
 
@@ -134,10 +174,27 @@ ordersRouter.post("/orders", requireDb, async (req, res) => {
 ordersRouter.get("/orders/:id", requireDb, async (req, res) => {
   const { data } = await db()
     .from("orders")
-    .select("id, status, payment_status, subtotal_cents, discount_cents, total_cents, discount_code, created_at")
+    .select(
+      // One literal so supabase-js types the row (see orders/service.ts).
+      "id, status, payment_status, subtotal_cents, discount_cents, total_cents, discount_code, tracking_number, paid_at, shipped_at, delivered_at, created_at, user_id, email",
+    )
     .eq("id", req.params.id)
     .maybeSingle();
   if (!data) return res.status(404).json({ error: "Order not found" });
+
+  const { data: items } = await db()
+    .from("order_items")
+    .select("product_name, product_slug, qty, unit_price_cents")
+    .eq("order_id", data.id);
+
+  const { data: events } = await db()
+    .from("order_events")
+    .select("type, to_status, message, created_at")
+    .eq("order_id", data.id)
+    .in("type", ["status_change", "payment_confirmed", "delivery_update", "account_linked"])
+    .order("created_at", { ascending: false })
+    .limit(25);
+
   res.json({
     id: data.id,
     status: data.status,
@@ -146,97 +203,62 @@ ordersRouter.get("/orders/:id", requireDb, async (req, res) => {
     discountCents: data.discount_cents,
     totalCents: data.total_cents,
     discountCode: data.discount_code ?? undefined,
+    trackingNumber: data.tracking_number ?? undefined,
+    paidAt: data.paid_at ?? undefined,
+    shippedAt: data.shipped_at ?? undefined,
+    deliveredAt: data.delivered_at ?? undefined,
+    createdAt: data.created_at,
+    hasAccount: Boolean(data.user_id),
+    emailHint: maskEmail(String(data.email ?? "")),
+    items: (items ?? []).map((i) => ({
+      name: i.product_name,
+      slug: i.product_slug,
+      qty: i.qty,
+      unitCents: i.unit_price_cents,
+    })),
+    timeline: (events ?? []).map((e) => ({
+      type: e.type,
+      status: e.to_status,
+      message: e.message,
+      at: e.created_at,
+    })),
   });
 });
 
-async function markOrderPaid(orderId: string, paymentRef: string | null): Promise<void> {
-  const { data: order } = await db()
-    .from("orders")
-    .select("id, email, status, subtotal_cents, discount_cents, total_cents, discount_code")
-    .eq("id", orderId)
-    .maybeSingle();
-  if (!order || order.status !== "pending_payment") return; // idempotent
-
-  await db()
-    .from("orders")
-    .update({ status: "paid", payment_status: "paid", ...(paymentRef ? { payment_ref: paymentRef } : {}) })
-    .eq("id", orderId);
-
-  const { data: items } = await db()
-    .from("order_items")
-    .select("product_name, qty, unit_price_cents")
-    .eq("order_id", orderId);
-  void sendOrderConfirmation(order.email, {
-    id: order.id,
-    items: (items ?? []).map((i) => ({ name: i.product_name, qty: i.qty, unitCents: i.unit_price_cents })),
-    subtotalCents: order.subtotal_cents,
-    discountCents: order.discount_cents,
-    totalCents: order.total_cents,
-    discountCode: order.discount_code,
-  });
+/** j***@example.com — enough for the buyer to recognise, useless to a scraper. */
+function maskEmail(email: string): string {
+  const [name, domain] = email.split("@");
+  if (!domain) return "";
+  return `${name.slice(0, 1)}${"*".repeat(Math.max(1, name.length - 1))}@${domain}`;
 }
 
-/** PayPal capture — called by the return page after buyer approval. */
-ordersRouter.post("/payments/paypal/capture", requireDb, async (req, res) => {
-  const orderId = String(req.body?.orderId ?? "");
-  const paypalOrderId = String(req.body?.paypalOrderId ?? "");
-  if (!orderId || !paypalOrderId) return res.status(400).json({ error: "orderId and paypalOrderId required" });
+/**
+ * Pulls the live Stripe Checkout Session for this order and records what
+ * Stripe reports. Called by the success page instead of a webhook. It moves
+ * the order to `awaiting_confirmation` at most — never to paid.
+ */
+ordersRouter.post("/orders/:id/sync", requireDb, async (req, res) => {
+  const sessionId = req.body?.sessionId ? String(req.body.sessionId) : undefined;
+  const result = await syncStripeSession(req.params.id, sessionId);
+  if (!result.ok) return res.status(400).json({ error: result.error ?? "Could not verify payment" });
 
-  const { data: order } = await db()
-    .from("orders")
-    .select("id, status, payment_ref")
-    .eq("id", orderId)
-    .maybeSingle();
-  if (!order) return res.status(404).json({ error: "Order not found" });
-  if (order.payment_ref && order.payment_ref !== paypalOrderId) {
-    return res.status(409).json({ error: "Payment reference mismatch" });
-  }
-  if (order.status !== "pending_payment") return res.json({ ok: true, status: order.status });
-
-  try {
-    const capture = await capturePaypalOrder(paypalOrderId);
-    if (!capture.completed || (capture.customId && capture.customId !== orderId)) {
-      return res.status(402).json({ error: "Payment was not completed" });
-    }
-    await markOrderPaid(orderId, capture.captureId ?? paypalOrderId);
-    res.json({ ok: true, status: "paid" });
-  } catch (err) {
-    console.error("paypal capture failed", err);
-    res.status(502).json({ error: "PayPal capture failed" });
-  }
+  const order = await getOrder(req.params.id);
+  res.json({
+    ok: true,
+    status: order?.status ?? "pending_payment",
+    paymentStatus: order?.payment_status ?? "unpaid",
+    stripeStatus: result.stripeStatus,
+    awaitingConfirmation: order?.status === "awaiting_confirmation",
+  });
 });
 
 /**
- * Stripe webhook. Mounted with a raw body parser (signature verification
- * needs the exact bytes) — see index.ts.
+ * Attaches every guest order placed with the signed-in user's address to their
+ * account. Called by the frontend right after sign-in/sign-up.
  */
-webhooksRouter.post("/stripe", raw({ type: "application/json" }), async (req, res) => {
-  const signature = req.headers["stripe-signature"];
-  if (typeof signature !== "string") return res.status(400).json({ error: "Missing signature" });
-
-  let event;
-  try {
-    event = verifyStripeWebhook(req.body as Buffer, signature);
-  } catch (err) {
-    console.error("stripe webhook verification failed", err);
-    return res.status(400).json({ error: "Invalid signature" });
-  }
-
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as { id: string; metadata?: { order_id?: string } };
-    const orderId = session.metadata?.order_id;
-    if (orderId) await markOrderPaid(orderId, session.id);
-  } else if (event.type === "checkout.session.expired") {
-    const session = event.data.object as { metadata?: { order_id?: string } };
-    const orderId = session.metadata?.order_id;
-    if (orderId) {
-      await db()
-        .from("orders")
-        .update({ status: "cancelled", payment_status: "failed" })
-        .eq("id", orderId)
-        .eq("status", "pending_payment");
-    }
-  }
-
-  res.json({ received: true });
+ordersRouter.post("/orders/claim", requireDb, async (req, res) => {
+  const user = await getUserFromRequest(req);
+  if (!user?.email) return res.status(401).json({ error: "Authentication required" });
+  const claimed = await claimOrdersForUser(user.id, user.email);
+  res.json({ ok: true, claimed });
 });

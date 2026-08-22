@@ -233,7 +233,7 @@ export default async function HomePage() {
       {/* Newsletter */}
       <section className="border-t border-steel bg-coal">
         <div className="mx-auto max-w-7xl px-4 py-24 text-center md:px-12">
-          <h2 className="display text-4xl md:text-5xl">Join the Nation</h2>
+          <h2 className="display text-4xl md:text-5xl">Join the Crew</h2>
           <p className="mx-auto mt-4 max-w-xl text-silver">
             Get exclusive access to pre-orders, custom build drops, and technical maintenance
             guides directly to your inbox.

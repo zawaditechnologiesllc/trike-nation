@@ -12,7 +12,7 @@ export default async function CookiesPage() {
       <p className="font-mono text-xs text-silver">Last updated: November 2024</p>
       <Section title="The Short Version">
         <p>
-          Trike Nation uses only the storage a store needs to function. No advertising trackers,
+          Go Cart Grip uses only the storage a store needs to function. No advertising trackers,
           no third-party analytics pixels, no data brokers — your riding habits are your business.
         </p>
       </Section>
@@ -21,7 +21,7 @@ export default async function CookiesPage() {
           specs={[
             { label: "Cart Contents", value: "Browser Storage · Functional" },
             { label: "Sign-In Session", value: "Auth Token · Functional" },
-            { label: "Payment Session", value: "Stripe / PayPal · During Checkout" },
+            { label: "Payment Session", value: "Stripe · During Checkout" },
             { label: "Ad / Marketing Trackers", value: "None" },
           ]}
         />

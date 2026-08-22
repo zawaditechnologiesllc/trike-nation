@@ -1,7 +1,7 @@
-# Trike Nation
+# Go Cart Grip
 
 Production e-commerce platform for handcrafted mini trikes, drift karts, mini bikes, and quads —
-implemented from the Stitch "Trike Nation Site Redesign" mockups (Apex Rugged design system:
+implemented from the Stitch "Go Cart Grip Site Redesign" mockups (Apex Rugged design system:
 dark "Stealth & Fire" palette, Anton display type, Manrope body, JetBrains Mono technical labels).
 
 ## Architecture
@@ -77,7 +77,7 @@ npm run dev
 
 The stubs (`scripts/dev-stubs/stubs.mjs`) let you exercise the entire flow — sign-in, checkout,
 webhooks, emails, the admin panel — without any live credentials. Stub logins:
-`admin@trike-nation.com` / `admin-pass-123` (admin) and `rider@example.com` / `rider-pass-123`.
+`admin@gocartgrip.shop` / `admin-pass-123` (admin) and `rider@example.com` / `rider-pass-123`.
 
 ## Production deployment
 
@@ -95,7 +95,7 @@ webhooks, emails, the admin panel — without any live credentials. Stub logins:
 ### 2. Resend (email)
 
 1. Create an API key at [resend.com](https://resend.com) and verify your sending domain.
-2. `EMAIL_FROM` must use the verified domain (e.g. `Trike Nation <orders@trike-nation.com>`).
+2. `EMAIL_FROM` must use the verified domain (e.g. `Go Cart Grip <orders@gocartgrip.shop>`).
 3. `ADMIN_EMAIL` receives contact-form notifications.
 
 ### 3. Stripe
@@ -115,7 +115,7 @@ webhooks, emails, the admin panel — without any live credentials. Stub logins:
 
 ### 5. Backend on Render
 
-1. New → Blueprint, point at this repo — `render.yaml` provisions `trike-nation-api`
+1. New → Blueprint, point at this repo — `render.yaml` provisions `gocartgrip-api`
    from `backend/`.
 2. Fill in the env vars (see `backend/.env.example` for the full annotated list):
    `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`,

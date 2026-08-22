@@ -1,3 +1,4 @@
+import { BRAND, EMAILS, SOCIAL } from "./brand";
 import type { SiteSettings } from "./types";
 
 /**
@@ -8,7 +9,7 @@ import type { SiteSettings } from "./types";
 export const DEFAULT_SETTINGS: SiteSettings = {
   hero: {
     kicker: "Handcrafted Performance",
-    title: "Trike Nation:",
+    title: `${BRAND.name}:`,
     accent: "Adrenaline",
     subtitle:
       "Engineered for the bold. Experience the raw energy of high-performance mini trikes and drift karts built for ultimate durability and speed.",
@@ -24,13 +25,9 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   ],
   contact: {
     phone: "+1 (916) 436-8303",
-    email: "support@trike-nation.com",
+    email: EMAILS.support,
     address: "4821 Throttle Way, Sacramento, CA 95814",
     hours: "Mon–Fri, 8am–5pm PT",
   },
-  social: {
-    facebook: "https://facebook.com/trikenation",
-    instagram: "https://instagram.com/trikenation",
-    threads: "https://threads.net/@trikenation",
-  },
+  social: { ...SOCIAL },
 };

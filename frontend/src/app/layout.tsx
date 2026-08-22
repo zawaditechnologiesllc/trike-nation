@@ -3,6 +3,7 @@ import { Anton, JetBrains_Mono, Manrope } from "next/font/google";
 import { CartProvider } from "@/lib/cart";
 import { AuthProvider } from "@/lib/auth";
 import { fetchCategories, fetchSettings } from "@/lib/api";
+import { BRAND } from "@/lib/brand";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import "./globals.css";
@@ -11,13 +12,26 @@ const anton = Anton({ weight: "400", subsets: ["latin"], variable: "--font-anton
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
 
+const DESCRIPTION =
+  "Engineered for the bold. High-performance mini trikes, drift karts, mini bikes, and quads built for ultimate durability and speed. Free worldwide shipping, delivered in 12–30 days.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(BRAND.url),
   title: {
-    default: "Trike Nation | Handcrafted Adrenaline",
-    template: "%s | Trike Nation",
+    default: `${BRAND.name} | Handcrafted Adrenaline`,
+    template: `%s | ${BRAND.name}`,
   },
-  description:
-    "Engineered for the bold. High-performance mini trikes, drift karts, mini bikes, and quads built for ultimate durability and speed.",
+  description: DESCRIPTION,
+  applicationName: BRAND.name,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: BRAND.name,
+    title: `${BRAND.name} | Handcrafted Adrenaline`,
+    description: DESCRIPTION,
+    url: BRAND.url,
+  },
+  twitter: { card: "summary_large_image", title: BRAND.name, description: DESCRIPTION },
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

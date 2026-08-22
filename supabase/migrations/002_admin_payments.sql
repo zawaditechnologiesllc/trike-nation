@@ -1,4 +1,4 @@
--- Trike Nation — admin panel, site settings, payments, and messaging.
+-- Go Cart Grip — admin panel, site settings, payments, and messaging.
 -- Run after 001_init.sql.
 
 -- ---------------------------------------------------------------------------

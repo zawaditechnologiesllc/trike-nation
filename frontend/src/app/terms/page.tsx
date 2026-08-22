@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import PageShell, { Section } from "@/components/PageShell";
 import { fetchSettings } from "@/lib/api";
+import { EMAILS } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Terms of Service" };
 
@@ -11,7 +12,7 @@ export default async function TermsPage() {
       <p className="font-mono text-xs text-silver">Last updated: November 2024</p>
       <Section title="The Deal">
         <p>
-          By purchasing from Trike Nation you agree to these terms. Our machines are high-performance
+          By purchasing from Go Cart Grip you agree to these terms. Our machines are high-performance
           recreational vehicles intended for off-road and closed-course use by riders who accept the
           inherent risks of motorsport.
         </p>
@@ -20,7 +21,7 @@ export default async function TermsPage() {
         <p>
           You are responsible for operating your machine safely: wear a DOT-approved helmet and
           protective gear, follow local laws, supervise riders under 16, and complete the break-in
-          procedure before hard riding. Trike Nation machines are not street legal and are sold for
+          procedure before hard riding. Go Cart Grip machines are not street legal and are sold for
           private property and closed-course use only.
         </p>
       </Section>
@@ -34,14 +35,15 @@ export default async function TermsPage() {
       </Section>
       <Section title="Limitation of Liability">
         <p>
-          To the maximum extent permitted by law, Trike Nation&apos;s liability is limited to the
+          To the maximum extent permitted by law, Go Cart Grip&apos;s liability is limited to the
           purchase price of your machine. Motorsport is dangerous — ride within your limits.
         </p>
       </Section>
       <Section title="Questions">
         <p>
           These terms are governed by the laws of the State of California. Questions? Email{" "}
-          <strong>{contact.email}</strong>.
+          <strong>{contact.email}</strong> — order and payment questions go to{" "}
+          <strong>{EMAILS.orders}</strong>.
         </p>
       </Section>
     </PageShell>

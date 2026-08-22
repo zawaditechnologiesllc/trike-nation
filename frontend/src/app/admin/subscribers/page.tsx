@@ -29,7 +29,7 @@ export default function AdminSubscribersPage() {
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "trike-nation-subscribers.csv";
+    a.download = "gocartgrip-subscribers.csv";
     a.click();
     URL.revokeObjectURL(a.href);
   }
