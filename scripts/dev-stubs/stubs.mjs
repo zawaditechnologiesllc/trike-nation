@@ -1,14 +1,17 @@
 /**
  * Local service stubs for end-to-end testing without live credentials:
  *   :4600 Supabase (PostgREST subset + GoTrue auth + Storage)
- *   :4601 Stripe   (coupons, checkout sessions, hosted pay page, signed webhooks)
- *   :4602 PayPal   (oauth, orders create/capture, approval page)
+ *   :4601 Stripe   (coupons, checkout sessions, hosted pay page, session reads)
  *   :4603 Resend   (email capture; GET /sent lists captured emails)
+ *
+ * There is no webhook stub: production runs without Stripe webhooks. Paying on
+ * the stub checkout page marks the session paid and redirects back, and the
+ * backend reads that state with a session retrieve — same as live.
  *
  * Not used in production — the real services are configured via env vars.
  * Run with: node scripts/dev-stubs/stubs.mjs
  */
-import { createHmac, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -18,8 +21,6 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const catalog = JSON.parse(readFileSync(join(root, "data", "catalog.json"), "utf8"));
 const siteSettings = JSON.parse(readFileSync(join(root, "data", "site-settings.json"), "utf8"));
 
-const BACKEND_URL = process.env.STUB_BACKEND_URL ?? "http://localhost:4700";
-const WEBHOOK_SECRET = process.env.STUB_STRIPE_WEBHOOK_SECRET ?? "whsec_stub";
 
 // ---------------------------------------------------------------------------
 // In-memory database seeded like supabase/seed.sql
@@ -252,10 +253,47 @@ const stripeStub = createServer(async (req, res) => {
     const id = `cs_test_${Date.now()}`;
     stripeSessions.set(id, {
       orderId: form.get("metadata[order_id]"),
-      successUrl: form.get("success_url"),
+      // The real success_url carries {CHECKOUT_SESSION_ID}; substitute it the
+      // way Stripe does so the app gets a usable session id back.
+      successUrl: (form.get("success_url") ?? "").replace("{CHECKOUT_SESSION_ID}", id),
       cancelUrl: form.get("cancel_url"),
+      amountTotal: Number(form.get("line_items[0][price_data][unit_amount]") ?? 0),
+      customerEmail: form.get("customer_email"),
+      paymentStatus: "unpaid",
+      status: "open",
     });
     return json(res, 200, { id, object: "checkout.session", url: `http://localhost:4601/pay/${id}` });
+  }
+  // Session retrieve — this is what replaces webhook delivery.
+  const retrieveMatch = url.pathname.match(/^\/v1\/checkout\/sessions\/(cs_test_\w+)$/);
+  if (retrieveMatch && req.method === "GET") {
+    const session = stripeSessions.get(retrieveMatch[1]);
+    if (!session) return json(res, 404, { error: { message: "No such checkout session" } });
+    const intentId = `pi_stub_${retrieveMatch[1].slice(-8)}`;
+    return json(res, 200, {
+      id: retrieveMatch[1],
+      object: "checkout.session",
+      payment_status: session.paymentStatus,
+      status: session.status,
+      amount_total: session.amountTotal,
+      currency: "usd",
+      client_reference_id: session.orderId,
+      metadata: { order_id: session.orderId },
+      customer_email: session.customerEmail,
+      customer_details: { email: session.customerEmail },
+      payment_intent:
+        session.paymentStatus === "paid"
+          ? {
+              id: intentId,
+              object: "payment_intent",
+              latest_charge: {
+                id: `ch_stub_${retrieveMatch[1].slice(-8)}`,
+                object: "charge",
+                receipt_url: `http://localhost:4601/receipt/${retrieveMatch[1]}`,
+              },
+            }
+          : null,
+    });
   }
   const payMatch = url.pathname.match(/^\/pay\/(cs_test_\w+)$/);
   if (payMatch && req.method === "GET") {
@@ -268,78 +306,18 @@ const stripeStub = createServer(async (req, res) => {
   const completeMatch = url.pathname.match(/^\/pay\/(cs_test_\w+)\/complete$/);
   if (completeMatch && req.method === "POST") {
     const session = stripeSessions.get(completeMatch[1]);
-    const payload = JSON.stringify({
-      id: `evt_${Date.now()}`,
-      object: "event",
-      type: "checkout.session.completed",
-      data: { object: { id: completeMatch[1], object: "checkout.session", metadata: { order_id: session.orderId } } },
-    });
-    const t = Math.floor(Date.now() / 1000);
-    const sig = createHmac("sha256", WEBHOOK_SECRET).update(`${t}.${payload}`).digest("hex");
-    await fetch(`${BACKEND_URL}/api/webhooks/stripe`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "stripe-signature": `t=${t},v1=${sig}` },
-      body: payload,
-    }).catch((err) => console.error("[stripe-stub] webhook delivery failed", err));
+    // No webhook is fired: the app finds out by reading the session back.
+    session.paymentStatus = "paid";
+    session.status = "complete";
+    console.log(`[stripe-stub] session ${completeMatch[1]} marked paid`);
     res.writeHead(303, { Location: session.successUrl });
     return res.end();
   }
+  const receiptMatch = url.pathname.match(/^\/receipt\/(cs_test_\w+)$/);
+  if (receiptMatch && req.method === "GET") {
+    return html(res, `<h1>STRIPE RECEIPT (STUB)</h1><p>Session ${receiptMatch[1]}</p>`);
+  }
   json(res, 404, { error: { message: `no stub for ${req.method} ${url.pathname}` } });
-});
-
-// ---------------------------------------------------------------------------
-// PayPal stub (:4602)
-// ---------------------------------------------------------------------------
-
-const paypalOrders = new Map();
-
-const paypalStub = createServer(async (req, res) => {
-  const url = new URL(req.url, "http://localhost");
-  const body = (await readBody(req)).toString();
-
-  if (url.pathname === "/v1/oauth2/token") {
-    return json(res, 200, { access_token: "pp_stub_token", token_type: "Bearer", expires_in: 3600 });
-  }
-  if (url.pathname === "/v2/checkout/orders" && req.method === "POST") {
-    const payload = JSON.parse(body);
-    const id = `PPORD${Date.now()}`;
-    const unit = payload.purchase_units[0];
-    paypalOrders.set(id, {
-      customId: unit.custom_id,
-      returnUrl: payload.payment_source.paypal.experience_context.return_url,
-    });
-    return json(res, 201, {
-      id,
-      status: "PAYER_ACTION_REQUIRED",
-      links: [{ rel: "payer-action", href: `http://localhost:4602/approve/${id}` }],
-    });
-  }
-  const approveMatch = url.pathname.match(/^\/approve\/(PPORD\w+)$/);
-  if (approveMatch && req.method === "GET") {
-    return html(
-      res,
-      `<h1>PAYPAL (STUB)</h1>
-       <form method="POST" action="/approve/${approveMatch[1]}/confirm"><button id="approve" style="padding:16px 32px;background:#0070ba;color:#fff;border:0;font-size:18px">APPROVE PAYMENT</button></form>`,
-    );
-  }
-  const confirmMatch = url.pathname.match(/^\/approve\/(PPORD\w+)\/confirm$/);
-  if (confirmMatch && req.method === "POST") {
-    const order = paypalOrders.get(confirmMatch[1]);
-    const sep = order.returnUrl.includes("?") ? "&" : "?";
-    res.writeHead(303, { Location: `${order.returnUrl}${sep}token=${confirmMatch[1]}&PayerID=STUBPAYER` });
-    return res.end();
-  }
-  const captureMatch = url.pathname.match(/^\/v2\/checkout\/orders\/(PPORD\w+)\/capture$/);
-  if (captureMatch && req.method === "POST") {
-    const order = paypalOrders.get(captureMatch[1]);
-    if (!order) return json(res, 404, { message: "order not found" });
-    return json(res, 201, {
-      id: captureMatch[1],
-      status: "COMPLETED",
-      purchase_units: [{ custom_id: order.customId, payments: { captures: [{ id: `CAP${Date.now()}`, custom_id: order.customId }] } }],
-    });
-  }
-  json(res, 404, { message: `no stub for ${req.method} ${url.pathname}` });
 });
 
 // ---------------------------------------------------------------------------
@@ -362,5 +340,4 @@ const resendStub = createServer(async (req, res) => {
 
 supabaseStub.listen(4600, () => console.log("supabase stub :4600"));
 stripeStub.listen(4601, () => console.log("stripe stub   :4601"));
-paypalStub.listen(4602, () => console.log("paypal stub   :4602"));
 resendStub.listen(4603, () => console.log("resend stub   :4603"));

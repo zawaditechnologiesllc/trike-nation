@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { adminFetch, statusTone, type AdminStats } from "@/lib/admin";
+import { adminFetch, formatStatus, statusTone, type AdminStats } from "@/lib/admin";
 import { money } from "@/lib/format";
 
 export default function AdminDashboard() {
@@ -17,9 +17,15 @@ export default function AdminDashboard() {
   if (!stats) return <p className="label-caps text-silver">Loading dashboard…</p>;
 
   const cards = [
-    { label: "Revenue (paid)", value: money(stats.revenueCents), href: "/admin/orders" },
+    { label: "Revenue (confirmed)", value: money(stats.revenueCents), href: "/admin/orders/paid" },
     { label: "Orders", value: `${stats.ordersPaid} paid / ${stats.ordersTotal}`, href: "/admin/orders" },
+    {
+      label: "Payments to confirm",
+      value: String(stats.ordersAwaitingConfirmation),
+      href: "/admin/orders?status=needs_action",
+    },
     { label: "Awaiting fulfilment", value: String(stats.ordersAwaitingFulfilment), href: "/admin/orders?status=paid" },
+    { label: "In transit", value: String(stats.ordersInTransit), href: "/admin/orders?status=shipped" },
     {
       label: "Products",
       value: `${stats.products}${stats.productsOutOfStock ? ` (${stats.productsOutOfStock} out of stock)` : ""}`,
@@ -32,6 +38,21 @@ export default function AdminDashboard() {
   return (
     <div>
       <h1 className="display text-3xl md:text-4xl">Dashboard</h1>
+      {stats.ordersAwaitingConfirmation > 0 && (
+        <Link
+          href="/admin/orders?status=needs_action"
+          className="mt-4 block border border-crimson bg-crimson/10 p-4 hover:border-ember"
+        >
+          <p className="label-caps text-blush">
+            {stats.ordersAwaitingConfirmation} payment
+            {stats.ordersAwaitingConfirmation === 1 ? "" : "s"} waiting on you
+          </p>
+          <p className="mt-1 font-mono text-xs text-chrome">
+            Customers have paid on Stripe and are waiting for confirmation — they only get their
+            confirmation email once you approve. Review them now →
+          </p>
+        </Link>
+      )}
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {cards.map((card) => (
           <Link key={card.label} href={card.href} className="border border-steel bg-carbon p-5 hover:border-crimson">
@@ -49,7 +70,7 @@ export default function AdminDashboard() {
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="bg-coal">
               <tr>
-                {["Order", "Customer", "Status", "Total", ""].map((h) => (
+                {["Order", "Customer", "Payment", "Status", "Total", ""].map((h) => (
                   <th key={h} className="label-caps px-4 py-3 text-silver">
                     {h}
                   </th>
@@ -61,7 +82,14 @@ export default function AdminDashboard() {
                 <tr key={o.id} className="border-t border-steel/60 bg-carbon">
                   <td className="px-4 py-3 font-mono text-xs">#{o.id.slice(0, 8).toUpperCase()}</td>
                   <td className="px-4 py-3 text-chrome">{o.email}</td>
-                  <td className={`label-caps px-4 py-3 ${statusTone(o.status)}`}>{o.status.replace(/_/g, " ")}</td>
+                  <td
+                    className={`label-caps px-4 py-3 ${
+                      o.paymentStatus === "paid" ? "text-success" : "text-silver"
+                    }`}
+                  >
+                    {o.paymentStatus}
+                  </td>
+                  <td className={`label-caps px-4 py-3 ${statusTone(o.status)}`}>{formatStatus(o.status)}</td>
                   <td className="px-4 py-3 font-mono font-bold text-ember">{money(o.totalCents)}</td>
                   <td className="px-4 py-3">
                     <Link href={`/admin/orders/${o.id}`} className="label-caps text-ember hover:text-blush">

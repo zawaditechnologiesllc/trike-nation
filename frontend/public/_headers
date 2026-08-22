@@ -1,0 +1,8 @@
+# Cloudflare Workers Assets headers.
+# Product and category artwork is immutable under a given filename, so it is
+# cached for a full year at the edge and in the browser.
+/images/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable

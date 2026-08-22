@@ -1,9 +1,9 @@
 import { DEFAULT_SETTINGS } from "./defaults";
 import type {
+  AccountOrder,
   CartItem,
   Category,
   OrderSummary,
-  PaymentProvider,
   PaymentsConfig,
   Product,
   ShippingInfo,
@@ -75,7 +75,9 @@ export async function fetchSettings(): Promise<SiteSettings> {
 }
 
 export async function fetchPaymentsConfig(): Promise<PaymentsConfig> {
-  return (await apiGet<PaymentsConfig>("/api/payments/config", 0)) ?? { stripe: false, paypal: false };
+  return (
+    (await apiGet<PaymentsConfig>("/api/payments/config", 0)) ?? { stripe: false, manualApproval: true }
+  );
 }
 
 export async function fetchOrderStatus(id: string): Promise<OrderSummary | null> {
@@ -124,14 +126,12 @@ export async function sendContactMessage(input: {
 }
 
 /**
- * Creates the order server-side and returns the payment redirect (Stripe
- * hosted Checkout or PayPal approval page). The cart is cleared on the
- * success page, after payment — not before.
+ * Creates the order server-side and returns the Stripe hosted Checkout URL.
+ * The cart is cleared on the success page, after payment — not before.
  */
 export async function placeOrder(input: {
   items: CartItem[];
   shipping: ShippingInfo;
-  provider: PaymentProvider;
   discountCode?: string;
   accessToken?: string;
 }): Promise<OrderSummary> {
@@ -140,13 +140,67 @@ export async function placeOrder(input: {
     {
       items: input.items.map((i) => ({ slug: i.slug, qty: i.qty })),
       shipping: input.shipping,
-      provider: input.provider,
+      provider: "stripe",
       discountCode: input.discountCode,
     },
     { accessToken: input.accessToken },
   );
 }
 
-export async function capturePaypal(orderId: string, paypalOrderId: string): Promise<{ ok: boolean; status: string }> {
-  return apiSend<{ ok: boolean; status: string }>("/api/payments/paypal/capture", { orderId, paypalOrderId });
+/**
+ * Asks the backend to read the Stripe Checkout Session for this order. This
+ * replaces webhook delivery: the buyer's return triggers a server-side pull.
+ * It can only move the order to "awaiting confirmation" — an admin confirms
+ * the payment by hand before it counts as paid.
+ */
+export async function syncOrderPayment(
+  orderId: string,
+  sessionId?: string,
+): Promise<{ ok: boolean; status: string; paymentStatus: string; awaitingConfirmation: boolean } | null> {
+  try {
+    return await apiSend("/api/orders/" + orderId + "/sync", { sessionId });
+  } catch {
+    return null;
+  }
+}
+
+/** Attaches guest orders placed with this address to the signed-in account. */
+export async function claimOrders(accessToken: string): Promise<number> {
+  try {
+    const data = await apiSend<{ claimed: number }>("/api/orders/claim", {}, { accessToken });
+    return data.claimed;
+  } catch {
+    return 0;
+  }
+}
+
+export async function fetchAccountOrders(accessToken: string): Promise<AccountOrder[]> {
+  if (!API_URL) return [];
+  try {
+    const res = await fetch(`${API_URL}/api/account/orders`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    return (await res.json()) as AccountOrder[];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchAccountOrder(
+  accessToken: string,
+  orderId: string,
+): Promise<(AccountOrder & { shipping?: Record<string, string> }) | null> {
+  if (!API_URL) return null;
+  try {
+    const res = await fetch(`${API_URL}/api/account/orders/${orderId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as AccountOrder & { shipping?: Record<string, string> };
+  } catch {
+    return null;
+  }
 }

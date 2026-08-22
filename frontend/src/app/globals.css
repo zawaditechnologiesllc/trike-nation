@@ -15,6 +15,9 @@
   --color-ember: #ff3b45;
   --color-blush: #ffb3b0;
   --color-success: #4ade80;
+  /* Attention states: an order waiting on a human, a service that is up but
+     not fully configured. */
+  --color-amber: #fbbf24;
 
   --font-display: var(--font-anton), "Arial Black", sans-serif;
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;

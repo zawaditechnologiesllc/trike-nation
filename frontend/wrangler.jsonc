@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gocartgrip",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-08-01",
+  // Required by the OpenNext adapter — the Next.js server needs Node APIs.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // Public (non-secret) build-time values. NEXT_PUBLIC_* are inlined at build
+  // time by Next, so they live in .env.production / CI, not here.
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://gocartgrip.shop"
+  },
+  "routes": [
+    { "pattern": "gocartgrip.shop", "custom_domain": true },
+    { "pattern": "www.gocartgrip.shop", "custom_domain": true }
+  ]
+}

@@ -1,4 +1,6 @@
 # Render Blueprint — deploys the Go Cart Grip API.
+# The storefront is NOT deployed here: it runs on Cloudflare Workers
+# (see frontend/wrangler.jsonc and .github/workflows/deploy.yml).
 # https://render.com/docs/blueprint-spec
 services:
   - type: web
@@ -19,19 +21,37 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: "Go Cart Grip <orders@gocartgrip.shop>"
-      - key: ADMIN_EMAIL
+      - key: EMAIL_REPLY_TO
         value: support@gocartgrip.shop
+      - key: ADMIN_EMAIL
+        value: admin@gocartgrip.shop
+      - key: SUPPORT_EMAIL
+        value: support@gocartgrip.shop
+      - key: BRAND_NAME
+        value: Go Cart Grip
+      - key: BRAND_DOMAIN
+        value: gocartgrip.shop
+      # Stripe runs without webhooks — payments are confirmed by an admin, so
+      # there is no signing secret to configure.
       - key: STRIPE_SECRET_KEY
         sync: false
-      - key: STRIPE_WEBHOOK_SECRET
+      - key: STRIPE_CURRENCY
+        value: usd
+      # Must match the secret set on the gocartgrip-cron Cloudflare Worker.
+      - key: CRON_SECRET
         sync: false
-      - key: PAYPAL_CLIENT_ID
-        sync: false
-      - key: PAYPAL_CLIENT_SECRET
-        sync: false
-      - key: PAYPAL_ENV
-        value: live
+      - key: DELIVERY_UPDATE_DAYS
+        value: 7,12,20
+      - key: DELIVERY_MIN_DAYS
+        value: "12"
+      - key: DELIVERY_MAX_DAYS
+        value: "30"
+      # The Cloudflare Worker owns the schedule; leave this off.
+      - key: ENABLE_INTERNAL_CRON
+        value: "false"
+      - key: IMAGE_CACHE_SECONDS
+        value: "31536000"
       - key: FRONTEND_URL
-        sync: false # your Vercel URL, e.g. https://gocartgrip.vercel.app
+        value: https://gocartgrip.shop
       - key: CORS_ORIGIN
-        sync: false # same as FRONTEND_URL (comma-separate to allow more)
+        value: https://gocartgrip.shop,https://www.gocartgrip.shop

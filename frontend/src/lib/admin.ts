@@ -43,12 +43,22 @@ export interface AdminStats {
   revenueCents: number;
   ordersTotal: number;
   ordersPaid: number;
+  ordersAwaitingConfirmation: number;
   ordersAwaitingFulfilment: number;
+  ordersInTransit: number;
+  guestOrders: number;
   products: number;
   productsOutOfStock: number;
   subscribers: number;
   unreadMessages: number;
-  recentOrders: { id: string; email: string; status: string; totalCents: number; createdAt: string }[];
+  recentOrders: {
+    id: string;
+    email: string;
+    status: string;
+    paymentStatus: string;
+    totalCents: number;
+    createdAt: string;
+  }[];
 }
 
 export interface AdminOrderRow {
@@ -61,6 +71,27 @@ export interface AdminOrderRow {
   discount_code: string | null;
   tracking_number: string | null;
   created_at: string;
+  paid_at: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  user_id: string | null;
+  stripe_reported_status: string | null;
+  stripe_amount_total_cents: number | null;
+  account_invite_sent_at: string | null;
+}
+
+export interface AdminOrderEvent {
+  id: string;
+  type: string;
+  from_status: string | null;
+  to_status: string | null;
+  message: string;
+  notified: boolean;
+  email_to: string | null;
+  email_subject: string | null;
+  actor_email: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
 }
 
 export interface AdminOrderDetail extends AdminOrderRow {
@@ -69,8 +100,66 @@ export interface AdminOrderDetail extends AdminOrderRow {
   discount_cents: number;
   admin_notes: string | null;
   payment_ref: string | null;
-  user_id: string | null;
+  currency: string | null;
+  confirmed_by_email: string | null;
+  stripe_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  stripe_receipt_url: string | null;
+  stripe_checked_at: string | null;
+  refunded_cents: number | null;
+  account_linked_at: string | null;
+  delivery_updates_sent: number[] | null;
+  last_delivery_update_at: string | null;
+  last_notified_at: string | null;
   items: { product_slug: string; product_name: string; unit_price_cents: number; qty: number }[];
+  events: AdminOrderEvent[];
+}
+
+export interface AdminPaidOrders {
+  orders: AdminOrderRow[];
+  totals: {
+    count: number;
+    revenueCents: number;
+    last7DaysCents: number;
+    last30DaysCents: number;
+    awaitingFulfilment: number;
+    inTransit: number;
+    delivered: number;
+    unlinkedAccounts: number;
+  };
+}
+
+export type ServiceStatus = "ok" | "degraded" | "down" | "not_configured";
+
+export interface AdminServiceReport {
+  key: string;
+  name: string;
+  role: string;
+  status: ServiceStatus;
+  detail: string;
+  meta?: Record<string, unknown>;
+  docs?: string;
+}
+
+export interface AdminSystemReport {
+  overall: ServiceStatus;
+  checkedAt: string;
+  services: AdminServiceReport[];
+  app: {
+    brand: string;
+    domain: string;
+    frontendUrl: string;
+    environment: string;
+    supportEmail: string;
+    adminEmail: string;
+    emailFrom: string;
+    deliveryWindowDays: { min: number; max: number };
+    deliveryUpdateDays: number[];
+    manualPaymentApproval: boolean;
+    stripeWebhooks: boolean;
+    orderStatuses: string[];
+    paidStatuses: string[];
+  };
 }
 
 export interface AdminDiscount {
@@ -112,6 +201,7 @@ export interface AdminTestimonial {
 
 export const ORDER_STATUSES = [
   "pending_payment",
+  "awaiting_confirmation",
   "paid",
   "processing",
   "shipped",
@@ -119,6 +209,18 @@ export const ORDER_STATUSES = [
   "cancelled",
   "refunded",
 ] as const;
+
+/** Human copy for each status, shown to admins next to the raw value. */
+export const STATUS_HELP: Record<string, string> = {
+  pending_payment: "Order created; the customer has not completed Stripe checkout.",
+  awaiting_confirmation: "Customer paid on Stripe. Verify the money landed, then confirm.",
+  paid: "Payment confirmed by an admin — the customer has been emailed and the build queue starts.",
+  processing: "On the bench: frame prep, engine fitting, pre-ship shakedown.",
+  shipped: "Crated and with the carrier. Add a tracking number before saving.",
+  delivered: "Carrier confirmed delivery.",
+  cancelled: "Order cancelled. Refund separately if money was taken.",
+  refunded: "Money returned to the customer.",
+};
 
 export function statusTone(status: string): string {
   switch (status) {
@@ -131,7 +233,24 @@ export function statusTone(status: string): string {
     case "shipped":
     case "processing":
       return "text-blush";
+    case "awaiting_confirmation":
+      return "text-amber";
     default:
       return "text-silver";
   }
 }
+
+export function serviceTone(status: ServiceStatus): string {
+  switch (status) {
+    case "ok":
+      return "text-success";
+    case "degraded":
+      return "text-amber";
+    case "down":
+      return "text-ember";
+    default:
+      return "text-silver";
+  }
+}
+
+export const formatStatus = (status: string) => status.replace(/_/g, " ");

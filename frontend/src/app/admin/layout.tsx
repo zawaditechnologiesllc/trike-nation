@@ -6,9 +6,11 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { adminFetch } from "@/lib/admin";
 
-const NAV = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/orders", label: "Orders" },
+const NAV: { href: string; label: string; exact?: boolean; except?: string[] }[] = [
+  { href: "/admin", label: "Dashboard", exact: true },
+  { href: "/admin/orders/paid", label: "Paid Orders", exact: true },
+  // Paid Orders lives under /admin/orders, so exclude it from the prefix match.
+  { href: "/admin/orders", label: "All Orders", except: ["/admin/orders/paid"] },
   { href: "/admin/products", label: "Products" },
   { href: "/admin/categories", label: "Categories" },
   { href: "/admin/discounts", label: "Discounts" },
@@ -17,6 +19,7 @@ const NAV = [
   { href: "/admin/messages", label: "Messages" },
   { href: "/admin/testimonials", label: "Testimonials" },
   { href: "/admin/settings", label: "Site Settings" },
+  { href: "/admin/system", label: "System" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -77,7 +80,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
         <nav className={`mt-4 flex-col gap-1 lg:flex ${menuOpen ? "flex" : "hidden"}`} onClick={() => setMenuOpen(false)}>
           {NAV.map((item) => {
-            const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+            const active = item.exact
+              ? pathname === item.href
+              : pathname.startsWith(item.href) && !item.except?.includes(pathname);
             return (
               <Link
                 key={item.href}

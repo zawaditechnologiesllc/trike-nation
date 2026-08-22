@@ -7,7 +7,8 @@ import { useCart } from "@/lib/cart";
 import { useAuth } from "@/lib/auth";
 import { money } from "@/lib/format";
 import { fetchPaymentsConfig, placeOrder, validateDiscount } from "@/lib/api";
-import type { PaymentProvider, PaymentsConfig } from "@/lib/types";
+import { DELIVERY_WINDOW } from "@/lib/brand";
+import type { PaymentsConfig } from "@/lib/types";
 
 const STEPS = ["01 Shipping", "02 Payment", "03 Review"];
 
@@ -25,7 +26,6 @@ export default function CheckoutPage() {
     email: "",
   });
   const [payments, setPayments] = useState<PaymentsConfig | null>(null);
-  const [provider, setProvider] = useState<PaymentProvider | null>(null);
   const [code, setCode] = useState("");
   const [percentOff, setPercentOff] = useState(0);
   const [codeMsg, setCodeMsg] = useState("");
@@ -34,10 +34,7 @@ export default function CheckoutPage() {
   const [cancelled, setCancelled] = useState(false);
 
   useEffect(() => {
-    fetchPaymentsConfig().then((config) => {
-      setPayments(config);
-      setProvider(config.stripe ? "stripe" : config.paypal ? "paypal" : null);
-    });
+    fetchPaymentsConfig().then(setPayments);
     setCancelled(new URLSearchParams(window.location.search).get("cancelled") === "1");
   }, []);
 
@@ -47,7 +44,12 @@ export default function CheckoutPage() {
 
   const discountCents = Math.round((subtotalCents * percentOff) / 100);
   const totalCents = subtotalCents - discountCents;
-  const noProviders = payments !== null && !payments.stripe && !payments.paypal;
+  const stripeReady = payments?.stripe === true;
+  const noProviders = payments !== null && !payments.stripe;
+  const deliveryDays = payments?.deliveryDays ?? {
+    min: DELIVERY_WINDOW.minDays,
+    max: DELIVERY_WINDOW.maxDays,
+  };
 
   function set(field: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [field]: e.target.value });
@@ -66,20 +68,19 @@ export default function CheckoutPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (items.length === 0 || !provider) return;
+    if (items.length === 0 || !stripeReady) return;
     setSubmitting(true);
     setError("");
     try {
       const order = await placeOrder({
         items,
         shipping: form,
-        provider,
         discountCode: percentOff ? code.trim().toUpperCase() : undefined,
         accessToken: session?.access_token,
       });
       if (order.redirectUrl) {
-        // Off to Stripe Checkout / PayPal approval. The cart is cleared on
-        // the success page, after payment — so a cancelled payment keeps it.
+        // Off to Stripe Checkout. The cart is cleared on the success page,
+        // after payment — so a cancelled payment keeps it.
         window.location.assign(order.redirectUrl);
         return;
       }
@@ -178,34 +179,24 @@ export default function CheckoutPage() {
                 support to complete your order.
               </p>
             ) : (
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                {(
-                  [
-                    { id: "stripe" as const, label: "Card (Stripe Checkout)", enabled: payments.stripe },
-                    { id: "paypal" as const, label: "PayPal", enabled: payments.paypal },
-                  ]
-                ).map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    disabled={!opt.enabled}
-                    onClick={() => setProvider(opt.id)}
-                    className={`label-caps border px-4 py-4 text-left transition-colors ${
-                      provider === opt.id
-                        ? "border-crimson bg-night text-offwhite"
-                        : "border-steel text-silver hover:border-crimson"
-                    } ${!opt.enabled ? "cursor-not-allowed opacity-40" : ""}`}
-                  >
-                    {opt.label}
-                    {!opt.enabled && <span className="ml-2 text-silver">(unavailable)</span>}
-                  </button>
-                ))}
+              <div className="mt-6 border border-crimson bg-night px-4 py-4">
+                <p className="label-caps text-offwhite">Card · Stripe Checkout</p>
+                <p className="mt-2 font-mono text-xs text-silver">
+                  Visa, Mastercard, Amex, Apple Pay, and Google Pay — handled on Stripe&apos;s hosted
+                  page. Card details never touch our servers.
+                </p>
               </div>
             )}
-            <p className="label-caps mt-4 text-silver">
-              You&apos;ll be redirected to complete payment securely — card details never touch our
-              servers.
-            </p>
+            <div className="mt-4 space-y-2 border-l-2 border-steel-light pl-4">
+              <p className="label-caps text-silver">
+                Every payment is confirmed by a person, not a bot
+              </p>
+              <p className="font-mono text-xs leading-relaxed text-silver">
+                After you pay we verify the payment by hand — usually inside one business day — then
+                email you the confirmation. Delivery runs {deliveryDays.min}–{deliveryDays.max} days
+                from that confirmation, with progress emails on day 7, 12, and 20.
+              </p>
+            </div>
           </fieldset>
 
           {error && (
@@ -214,10 +205,10 @@ export default function CheckoutPage() {
 
           <button
             type="submit"
-            disabled={submitting || !provider}
+            disabled={submitting || !stripeReady}
             className="display glow-red w-full bg-crimson py-5 text-xl text-offwhite transition-colors hover:bg-ember disabled:opacity-50"
           >
-            {submitting ? "Starting Secure Payment…" : `Pay ${money(totalCents)}`}
+            {submitting ? "Starting Secure Payment…" : `Pay ${money(totalCents)} with Stripe`}
           </button>
         </div>
 
@@ -299,17 +290,21 @@ export default function CheckoutPage() {
             </div>
             <div className="border border-steel bg-carbon p-5 text-center">
               <p className="text-ember">▣</p>
-              <p className="label-caps mt-2 text-chrome">Fast Delivery</p>
+              <p className="label-caps mt-2 text-chrome">
+                {deliveryDays.min}–{deliveryDays.max} Day Delivery
+              </p>
             </div>
           </div>
 
           {!user && (
             <p className="font-mono text-xs text-silver">
-              Checking out as guest.{" "}
+              Checking out as guest — that&apos;s fine. We&apos;ll email you a link to create an
+              account with this address once payment is confirmed, and the order attaches to it
+              automatically. Prefer to{" "}
               <Link href="/login" className="text-ember hover:text-blush">
-                Sign in
+                sign in
               </Link>{" "}
-              to track this order in your account.
+              first? That works too.
             </p>
           )}
         </aside>

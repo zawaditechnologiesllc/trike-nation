@@ -57,6 +57,20 @@ export interface ShippingInfo {
   email: string;
 }
 
+export interface OrderLineItem {
+  name: string;
+  slug?: string;
+  qty: number;
+  unitCents: number;
+}
+
+export interface OrderTimelineEntry {
+  type: string;
+  status?: string | null;
+  message: string;
+  at: string;
+}
+
 export interface OrderSummary {
   id: string;
   status: string;
@@ -65,14 +79,33 @@ export interface OrderSummary {
   discountCents: number;
   totalCents: number;
   discountCode?: string;
+  trackingNumber?: string;
+  createdAt?: string;
+  paidAt?: string;
+  shippedAt?: string;
+  deliveredAt?: string;
+  /** Whether the order is already attached to an account. */
+  hasAccount?: boolean;
+  /** Masked buyer address, e.g. j****@example.com. */
+  emailHint?: string;
+  items?: OrderLineItem[];
+  timeline?: OrderTimelineEntry[];
   redirectUrl?: string;
 }
 
-export type PaymentProvider = "stripe" | "paypal";
+export interface AccountOrder extends OrderSummary {
+  items: OrderLineItem[];
+}
+
+/** Stripe is the only provider — payments are confirmed manually by an admin. */
+export type PaymentProvider = "stripe";
 
 export interface PaymentsConfig {
   stripe: boolean;
-  paypal: boolean;
+  publishableKey?: string | null;
+  currency?: string;
+  manualApproval?: boolean;
+  deliveryDays?: { min: number; max: number };
 }
 
 export interface SiteSettings {
