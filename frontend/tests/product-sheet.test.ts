@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseMoneyToCents, parseProductSheet, slugify } from "../../shared/core/product-sheet";
+import { parseMoneyToCents, parseProductSheet, slugify } from "../src/shared/core/product-sheet";
 
 // A sheet written the way an owner actually writes one: inconsistent
 // separators, mixed field names, colours in three different shapes.

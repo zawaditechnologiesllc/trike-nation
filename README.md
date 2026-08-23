@@ -8,10 +8,12 @@ running on **[gocartgrip.shop](https://gocartgrip.shop)**. Apex Rugged design sy
 | -------- | ------------------------------------------------------- | ------------------ | --------------- |
 | Frontend | Next.js 16 (App Router) + Tailwind CSS 4, via OpenNext   | Cloudflare Workers | `frontend/`     |
 | Backend  | Express + TypeScript REST API                            | Render             | `backend/`      |
+| Shared   | Dependency-free modules read by both, and by the tests   | —                  | `frontend/src/shared/core/` |
 | DB/Auth  | Supabase — Postgres, email/password auth, Storage        | Supabase           | `supabase/`     |
 | Email    | Resend — every order event, delivery update, and invite  | —                  | —               |
 | Payments | Stripe hosted Checkout — **no webhooks**                 | —                  | —               |
-| Cron     | Scheduled Worker → day 7/12/20 delivery updates          | Cloudflare Workers | `workers/cron/` |
+| Cron     | Scheduled Worker + CI backup → the stage clock           | Cloudflare Workers | `workers/cron/` |
+| Tests    | `node --test` with `tsx`, no framework                   | —                  | `frontend/tests/` |
 
 ## Documentation
 
@@ -52,10 +54,16 @@ account — or emails them an invitation to create one, prefilled with the addre
 
 ## Storefront
 
-Home (hero and announcement ticker are admin-editable), Shop with category/price/engine filters,
-Product detail, Cart, Checkout, order confirmation, public order tracking at `/orders/<id>`,
+Home, Shop with filters **derived from the live catalogue** (price bands on round numbers with
+counts, engine sizes, live category counts — never a filter that leads to an empty grid), Search,
+Product detail with colour swatches and a downloadable spec PDF, Wishlist, a cart drawer plus the
+full cart page, Checkout, order confirmation, public order tracking at `/orders/<id>`,
 Login/Signup, Account with order history, and prefilled About / FAQ / Contact / Support / Shipping /
-Warranty / Privacy / Terms / Cookies pages.
+Warranty / Privacy / Terms / Cookies pages. An admin-authored announcement stripe, scheduled per
+notice, runs across the top of every page.
+
+Colour is part of the cart **line identity** — the same product in two colours is two lines, and it
+reaches the order, every email and the PDF.
 
 ## Admin panel — `/admin`
 
@@ -67,9 +75,12 @@ Requires a signed-in user whose profile has `is_admin = true` (`supabase/make-ad
   confirm-payment, re-read-from-Stripe, refund, re-notify, manual delivery updates, account
   linking, and the full event timeline
 - **Products** — create/edit/delete, image upload to Supabase Storage (cached one year)
+- **Bulk Import** — paste a product sheet; preview says exactly what would happen and saves nothing
+- **Announcements** — the notice stripe, scheduled per notice
 - **Categories**, **Discounts**, **Customers**, **Subscribers**, **Messages**, **Testimonials**
-- **Site Settings** — homepage hero, announcement ticker, contact details, social links
-- **System** — live status of every connected service, plus an on-demand cron sweep
+- **Site Settings** — hero, ticker, contact details, social links, shipping, tax, logo
+- **System** — live status of every connected service, the trust checklist, a logo probe, and an
+  on-demand cron sweep
 
 ## Local development
 
@@ -104,6 +115,14 @@ Worker, and the API all redeploy. There is no preview environment. To deploy fro
 ./scripts/deploy-production.sh
 ```
 
+Before pushing, run all three checks:
+
+```bash
+cd frontend && npm test && npx tsc --noEmit && npm run build
+cd backend  && npx tsc --noEmit
+cd workers/cron && npx tsc --noEmit
+```
+
 First-time setup, required secrets, and the post-deploy smoke test are in
 [Deployment](docs/DEPLOYMENT.md).
 
@@ -123,7 +142,9 @@ First-time setup, required secrets, and the post-deploy smoke test are in
 | POST   | `/api/orders/:id/sync`              | —     | Pull the Checkout Session from Stripe             |
 | POST   | `/api/orders/claim`                 | user  | Attach guest orders to the signed-in account      |
 | GET    | `/api/account/orders[/:id]`         | user  | The customer's own orders + timeline              |
-| POST   | `/api/cron/delivery-updates`        | cron  | Day 7/12/20 sweep (`CRON_SECRET`)                 |
+| GET    | `/api/announcements`                | —     | Live, in-schedule notices                         |
+| POST   | `/api/cron/tick`                    | cron  | Both sweeps (`CRON_SECRET`)                       |
+| POST   | `/api/cron/delivery-updates` / `/abandoned` | cron | Either sweep on its own                   |
 | *      | `/api/admin/**`                     | admin | Stats, orders (confirm/refund/notify/link), paid orders, system status, products, uploads, categories, discounts, customers, subscribers, messages, testimonials, settings |
 
 RLS: catalog and settings tables are publicly readable; signed-in users read only their own profile,

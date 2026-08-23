@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { isAiCrawler } from "@shared/core/ai-crawlers";
+import { isAiCrawler } from "@/shared/core/ai-crawlers";
 
 /**
  * Two jobs: enforce the AI-crawler policy that robots.txt states, and set the

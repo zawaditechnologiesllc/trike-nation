@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { fetchCategories, fetchProducts } from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
 import ShopFilters from "@/components/ShopFilters";
-import { derivePriceBands, parsePriceRange, withinRange } from "@shared/core/price-bands";
+import { derivePriceBands, parsePriceRange, withinRange } from "@/shared/core/price-bands";
 import SpecList from "@/components/SpecList";
 
 export const metadata: Metadata = {

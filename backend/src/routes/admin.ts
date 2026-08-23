@@ -5,17 +5,17 @@ import { requireAdmin } from "../auth";
 import { resendHealth, sendOrderStatusChanged, sendDeliveryUpdate } from "../email";
 import { refundPayment, stripeAccountSnapshot, stripeEnabled, stripeLiveMode } from "../payments/stripe";
 import { claimStage, markClaimResult } from "../orders/events";
-import { STAGES, stageDefinition } from "../../../shared/core/stages";
-import { parseProductSheet } from "../../../shared/core/product-sheet";
-import { probeLogoBytes, probeLogoUrl } from "../../../shared/core/image-probe";
-import { parseColors } from "../../../shared/core/colors";
-import { couriersByRegion, generateInternalReference, trackingLink } from "../../../shared/core/couriers";
+import { STAGES, stageDefinition } from "../../../frontend/src/shared/core/stages";
+import { parseProductSheet } from "../../../frontend/src/shared/core/product-sheet";
+import { probeLogoBytes, probeLogoUrl } from "../../../frontend/src/shared/core/image-probe";
+import { parseColors } from "../../../frontend/src/shared/core/colors";
+import { couriersByRegion, generateInternalReference, trackingLink } from "../../../frontend/src/shared/core/couriers";
 import {
   NEVER_BUILD,
   WHAT_ACTUALLY_HELPS,
   organizationJsonLd,
   trustChecklist,
-} from "../../../shared/core/trust";
+} from "../../../frontend/src/shared/core/trust";
 import {
   ORDER_STATUSES,
   PAID_STATUSES,

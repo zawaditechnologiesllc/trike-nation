@@ -1,5 +1,5 @@
 import { BRAND, EMAILS } from "@/lib/brand";
-import { AI_CRAWLER_TOKENS, robotsAiRules, robotsStatement } from "@shared/core/ai-crawlers";
+import { AI_CRAWLER_TOKENS, robotsAiRules, robotsStatement } from "@/shared/core/ai-crawlers";
 
 /**
  * robots.txt.

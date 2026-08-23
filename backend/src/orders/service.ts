@@ -17,7 +17,7 @@ import {
   dueAbandonedReminder,
   dueStage,
   dueStages,
-} from "../../../shared/core/stages";
+} from "../../../frontend/src/shared/core/stages";
 import { retrieveCheckoutSession } from "../payments/stripe";
 
 /**

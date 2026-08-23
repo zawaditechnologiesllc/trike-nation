@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { PriceBand } from "@shared/core/price-bands";
+import type { PriceBand } from "@/shared/core/price-bands";
 import type { Category } from "@/lib/types";
 
 /**

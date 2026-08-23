@@ -62,8 +62,11 @@ There is deliberately **no `STRIPE_WEBHOOK_SECRET`** — see
 | Variable               | Default   | Notes                                                             |
 | ---------------------- | --------- | ----------------------------------------------------------------- |
 | `DELIVERY_UPDATE_DAYS` | `7,12,20` | Days after confirmed payment that trigger a progress email          |
-| `DELIVERY_MIN_DAYS`    | `12`      | Advertised delivery window, low end                                 |
+| `DELIVERY_MIN_DAYS`    | `12`      | Advertised delivery window, low end (before transit allowance)      |
 | `DELIVERY_MAX_DAYS`    | `30`      | Advertised delivery window, high end                                |
+| `RETURN_DAYS`          | `30`      | Return window quoted in the policy pages                            |
+| `REFUND_DAYS`          | `7`       | Hand-processing SLA quoted in the refund email                      |
+| `NO_REPLY_EMAIL`       | `no-reply@<domain>` | Sender for notices that take no reply                     |
 | `ENABLE_INTERNAL_CRON` | `false`   | Sweep from inside the API process instead of the Worker. **Single instance only** — two instances will duplicate work |
 
 ### Other
@@ -86,6 +89,13 @@ them in `wrangler.jsonc` vars after the fact does nothing — they have to be pr
 | `NEXT_PUBLIC_SUPABASE_URL`      | `https://abc.supabase.co`           | Auth only                                           |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJ…`                              | Anon key. **Never** the service-role key            |
 | `NEXT_PUBLIC_SITE_URL`          | `https://gocartgrip.shop`           | Canonical URL for metadata and Open Graph tags      |
+| `MAPS_API_KEY`                  | —                                   | **Server-side only.** Optional; enables address autocomplete through `/api/address-suggest`. Without it the street field is a plain input |
+| `TURNSTILE_SECRET_KEY`          | —                                   | Optional bot protection on public forms             |
+
+Because the first four are inlined at build time, there is a runtime fallback
+chain for them — `serverEnv()` → `window.__APP_ENV` → `/api/public-env` — so a
+value supplied only as a Worker variable still reaches the browser. See
+`frontend/src/lib/env.ts`.
 
 ## Delivery cron Worker
 
@@ -102,13 +112,18 @@ A mismatch shows up as a `401` when you open the Worker's URL.
 
 Settings → Secrets and variables → Actions.
 
-| Secret                          | Where it comes from                                            |
-| ------------------------------- | -------------------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`          | Cloudflare → My Profile → API Tokens → "Edit Cloudflare Workers" |
-| `CLOUDFLARE_ACCOUNT_ID`         | Cloudflare dashboard sidebar                                    |
-| `NEXT_PUBLIC_API_URL`           | the Render service URL                                          |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase → Settings → API                                       |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API                                       |
+| Secret                          | Used by | Where it comes from                                  |
+| ------------------------------- | ------- | ---------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`          | deploy  | Cloudflare → My Profile → API Tokens → "Edit Cloudflare Workers" |
+| `CLOUDFLARE_ACCOUNT_ID`         | deploy  | Cloudflare dashboard sidebar                         |
+| `NEXT_PUBLIC_API_URL`           | deploy  | the Render service URL                               |
+| `NEXT_PUBLIC_SUPABASE_URL`      | deploy  | Supabase → Settings → API                            |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | deploy  | Supabase → Settings → API                            |
+| `CRON_SECRET`                   | backup clock | the same value as on Render                     |
+| `API_URL`                       | backup clock | the Render service URL                          |
+
+The last two are for `.github/workflows/cron-backup.yml`, which ticks the clock
+hourly in case the Cloudflare Worker is down.
 
 ## Local development
 

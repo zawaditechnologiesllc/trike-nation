@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normaliseAddress, sanitiseSearch, validateAddress } from "../../shared/core/validation";
-import { addressVocabulary, countryOptions, isKnownCountry } from "../../shared/core/countries";
+import { normaliseAddress, sanitiseSearch, validateAddress } from "../src/shared/core/validation";
+import { addressVocabulary, countryOptions, isKnownCountry } from "../src/shared/core/countries";
 
 const valid = {
   firstName: "Ada", lastName: "Nkem", email: "ada@example.com", phone: "+1 916 555 0100",

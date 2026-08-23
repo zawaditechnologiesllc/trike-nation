@@ -7,7 +7,7 @@ import {
   dueStage,
   dueStages,
   isAfter,
-} from "../../shared/core/stages";
+} from "../src/shared/core/stages";
 
 const paid = new Date("2026-01-01T00:00:00Z");
 const plus = (days: number) => new Date(paid.getTime() + days * 86_400_000);

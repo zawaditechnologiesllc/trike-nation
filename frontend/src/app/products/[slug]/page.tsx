@@ -12,8 +12,8 @@ import Stars from "@/components/Stars";
 import ProductCard from "@/components/ProductCard";
 import SpecSheetLink from "@/components/SpecSheetLink";
 import WishlistButton from "@/components/WishlistButton";
-import { colorsFromDescription, stripColorLines } from "@shared/core/colors";
-import { productJsonLd } from "@shared/core/trust";
+import { colorsFromDescription, stripColorLines } from "@/shared/core/colors";
+import { productJsonLd } from "@/shared/core/trust";
 import JsonLd from "@/components/JsonLd";
 import { BRAND } from "@/lib/brand";
 

@@ -7,8 +7,8 @@ import { useCart } from "@/lib/cart";
 import { useAuth } from "@/lib/auth";
 import { money } from "@/lib/format";
 import { fetchPaymentsConfig, placeOrder, validateDiscount } from "@/lib/api";
-import { deliveryWindowLabel } from "@shared/core/delivery";
-import { validateAddress, type AddressInput, type FieldError } from "@shared/core/validation";
+import { deliveryWindowLabel } from "@/shared/core/delivery";
+import { validateAddress, type AddressInput, type FieldError } from "@/shared/core/validation";
 import type { PaymentsConfig } from "@/lib/types";
 
 const STEPS = ["01 Shipping", "02 Payment", "03 Review"];

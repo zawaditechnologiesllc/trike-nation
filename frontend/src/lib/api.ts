@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS } from "./defaults";
-import type { AddressInput, FieldError } from "@shared/core/validation";
+import type { AddressInput, FieldError } from "@/shared/core/validation";
 import type {
   AccountOrder,
   Announcement,

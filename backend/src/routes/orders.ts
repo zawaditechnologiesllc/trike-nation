@@ -8,9 +8,9 @@ import { createStripeCheckout, stripe, stripeEnabled } from "../payments/stripe"
 import { sendAdminNewOrder, sendOrderReceived, type OrderEmailData } from "../email";
 import { claimOrdersForUser, getOrder, recordEvent, syncStripeSession } from "../orders/service";
 import { readOrigin, originColumns } from "../orders/origin";
-import { parseColors, resolveColor, type ProductColor } from "../../../shared/core/colors";
-import { deliveryWindow, estimatedDeliveryAt } from "../../../shared/core/delivery";
-import { normaliseAddress, validateAddress } from "../../../shared/core/validation";
+import { parseColors, resolveColor, type ProductColor } from "../../../frontend/src/shared/core/colors";
+import { deliveryWindow, estimatedDeliveryAt } from "../../../frontend/src/shared/core/delivery";
+import { normaliseAddress, validateAddress } from "../../../frontend/src/shared/core/validation";
 
 export const ordersRouter = Router();
 

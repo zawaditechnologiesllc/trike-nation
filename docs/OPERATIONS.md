@@ -9,6 +9,11 @@ things when they break. Written for whoever is holding the admin login.
 - [Refunds and cancellations](#refunds-and-cancellations)
 - [Customer accounts](#customer-accounts)
 - [Products and images](#products-and-images)
+- [Bulk import](#bulk-import)
+- [Tracking and couriers](#tracking-and-couriers)
+- [Announcements](#announcements)
+- [Order origin and fraud flags](#order-origin-and-fraud-flags)
+- [The trust checklist](#the-trust-checklist)
 - [The System page](#the-system-page)
 - [Troubleshooting](#troubleshooting)
 
@@ -114,6 +119,77 @@ customers see it immediately. There is no cache to purge.
 Upload rules: images only, 5 MB maximum. Upload them at the size you want them served — the store
 does not resize images.
 
+## Bulk import
+
+`/admin/import` takes a plain-text product sheet. Fields can be in any order and
+under their usual names (`Product`/`Title`, `Details`/`About`, `Was`/`RRP`),
+bulleted `Specs:` and `In the box:` sections become lists, and colours can be
+written any of the three usual ways.
+
+**Always press Preview first.** It parses the sheet and tells you exactly what
+would be created, updated, skipped and why — and saves nothing. Then Import.
+
+A block with no readable price is refused rather than imported at zero, and the
+result names every product it created, updated or could not read. If a product
+does not appear in the list, it did not import.
+
+Re-importing updates by slug, and never overwrites a colour list you edited by
+hand in the product form.
+
+## Tracking and couriers
+
+The order page has a courier dropdown of about 115 carriers grouped by region,
+plus "Other — type it in".
+
+Below the tracking field, a line tells you **before you save** whether the
+customer will get a clickable link. They only do when the courier is known and
+the number is a real carrier number. That matters because a link that lands on
+"not found" makes the customer think nothing shipped.
+
+**Generate** creates an internal reference like `GCG-2608-3KN6Z4-V` for an order
+that has left but has no carrier number yet. Those are always shown as plain
+text, never linked — and the preview line says so.
+
+## Announcements
+
+`/admin/announcements` controls the stripe scrolling across the top of every
+page. Each notice has its own position and an optional start and end time; a
+scheduled one is not sent to the browser until it starts, so it cannot leak
+early to anyone reading the page source.
+
+Pause hides a notice without deleting it. With no notices at all, the stripe
+falls back to the ticker in Site Settings.
+
+## Order origin and fraud flags
+
+Each order records where the connection came from and what timezone the
+browser reported. That pair is the useful one — a VPN moves the address but not
+the clock. **No IP address is stored.**
+
+The order list shows a country column, with a dot only when something is worth a
+look. The order page explains every flag in plain English.
+
+**None of this is a reason to refuse an order.** A corporate VPN, a
+privacy-minded customer, an expat and a traveller all trip these signals. Card
+fraud is stopped in Stripe — issuing-country mismatch, CVC and postcode checks,
+and 3DS liability shift are all settings in the Stripe dashboard, and they are
+what actually works.
+
+## The trust checklist
+
+`/admin/system` lists anything still holding a shipped default — the address,
+the phone number, the legal name, the logo. Each says why a trust checker
+cares.
+
+Those values are **omitted** from the site's structured data while they are
+placeholders, on purpose: a fictional address that a checker follows and cannot
+find scores lower than no address at all. Filling them in is the single biggest
+signal a new domain can add.
+
+The same page lists what must never be built — chiefly review or rating markup
+for reviews that do not exist, which is the commonest cause of a
+structured-data penalty on the whole domain.
+
 ## The System page
 
 `/admin/system` checks every connected service live, on every page load:
@@ -127,8 +203,13 @@ does not resize images.
 | Delivery cron      | the sweep ran within the last 36 hours                          |
 | Cloudflare Workers | the storefront answered a request                               |
 
-**Run the sweep now** triggers the delivery-update pass by hand. It is safe to press at any time —
-each milestone is recorded per order, so nobody gets a duplicate email.
+**Run the sweep now** triggers the delivery-update pass by hand. It is safe to press at any time,
+even while the scheduled one is running: each stage is claimed in the database before anything is
+sent, so nobody gets a duplicate email.
+
+The page also probes the **stored logo** with the same decoder the spec sheets use, and names the
+actual problem — an interlaced PNG, a progressive or CMYK JPEG, or an SVG, which looks perfect in a
+browser preview and is not a raster image at all.
 
 Check this page after any deploy, and first when something looks wrong.
 

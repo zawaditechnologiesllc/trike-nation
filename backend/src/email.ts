@@ -1,7 +1,7 @@
 import { env } from "./env";
-import { BUFFER_EXPLANATION, deliveryWindowLabel } from "../../shared/core/delivery";
-import { stageDefinition } from "../../shared/core/stages";
-import { trackingLink } from "../../shared/core/couriers";
+import { BUFFER_EXPLANATION, deliveryWindowLabel } from "../../frontend/src/shared/core/delivery";
+import { stageDefinition } from "../../frontend/src/shared/core/stages";
+import { trackingLink } from "../../frontend/src/shared/core/couriers";
 
 /**
  * Transactional email via Resend (https://resend.com/docs/api-reference).

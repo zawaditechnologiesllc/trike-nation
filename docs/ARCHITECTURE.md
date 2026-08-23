@@ -125,6 +125,89 @@ so a cron outage produces one catch-up email, never a burst of backdated ones.
 
 Milestones are configurable with `DELIVERY_UPDATE_DAYS` (default `7,12,20`).
 
+## Shared modules
+
+`frontend/src/shared/core` holds every fact that more than one place needs, as
+dependency-free modules with no database, no framework and no environment — so
+the browser, the API and the tests all read one definition.
+
+It lives **inside** the app rather than at the repository root, and that is
+deliberate: Turbopack refuses to resolve modules outside the app root, whether
+by tsconfig path, by alias, or through a symlink, and forcing it with
+`turbopack.root` moves the standalone output to a path the OpenNext adapter
+cannot find. The frontend imports it as `@/shared/core/…`; the backend reaches
+in with a relative path. One copy, no build gymnastics.
+
+The modules:
+
+| Module | Owns |
+| --- | --- |
+| `delivery.ts` | The quoted window and its transit zones |
+| `stages.ts` | The internal stage schedule and the abandoned-chase days |
+| `colors.ts` | All three sheet formats, one heading list, the sentence guards |
+| `couriers.ts` | ~115 carriers, generated references, the tracking-link rule |
+| `countries.ts` | The ISO list and each country's address vocabulary |
+| `validation.ts` | One address validator for the browser and the server |
+| `price-bands.ts` | Bands derived from the live catalogue |
+| `risk.ts` | Advisory fraud flags and their weights |
+| `trust.ts` | Structured data and the placeholder guard |
+| `product-sheet.ts` | The bulk-import parser |
+| `pdf.ts`, `image-probe.ts` | The PDF writer and its honest failure reporting |
+| `ai-crawlers.ts` | The crawler tokens, read by robots.txt and middleware |
+
+## Colours
+
+Colour is part of the **cart line identity**: the same product in two colours is
+two lines, and it reaches `order_items`, every email and the PDF. Keying on slug
+alone merges them silently and the buyer receives two of whichever was added
+first.
+
+Real sheets write colours three ways — inline after a heading, a heading with
+bulleted items, and a bare sentence mid-list — and all three are parsed by one
+module with one shared heading list. The sentence form is guarded (a lead
+phrase, at least two items, no measurements, at least one real colour word), so
+"Available in 48V, 60V and 72V" and "Available in the UK, Europe and North
+America" both correctly yield nothing.
+
+The server applies the product's first colour when a line arrives without one,
+and **refuses** a colour the product does not come in — substituting quietly
+would put a colour on the order the buyer explicitly did not ask for.
+
+## Being found, and looking legitimate
+
+Structured data is built from the same settings the footer renders, so the name,
+address and phone cannot disagree across the site, and every value passes a
+placeholder guard: anything still holding a shipped default is **omitted**, not
+published. A fictional address a checker follows and cannot find scores lower
+than no address at all.
+
+`aggregateRating` and `Review` markup are deliberately absent and must stay
+that way — reviews that do not exist are the commonest cause of a
+structured-data manual action, and the penalty lands on the whole domain. A
+test asserts their absence.
+
+AI training crawlers are named in one list read by both `robots.txt` and the
+middleware that enforces it with a 403. Search engines and generic HTTP clients
+are never blocked — delisting the real shop leaves the clones ranking, and
+blocking `curl`/`node-fetch` stops our own cron silently. Matching is
+longest-wins, so `Applebot` is served while `Applebot-Extended` is turned away.
+`robots.txt` itself stays readable to the crawlers it refuses, carrying a prose
+statement of the one real domain and support address.
+
+## Fraud review
+
+Each order records what the CDN already knows about the connection — country,
+region, city, network — plus the timezone the browser reports for itself. That
+pair is the useful one: a VPN moves the address but not the clock.
+
+**No IP address is stored.** Most sensitive field, least useful for review.
+
+The signals become advisory flags, each explained in plain English, weighted so
+that nothing except Tor reaches the top level — an owner who sees red on every
+VPN user stops reading badges within a week. Nothing here ever refuses an order:
+card fraud is stopped at the payment layer, where issuing-country checks, CVC,
+postcode and 3DS liability shift live.
+
 ## Data model
 
 Tables added or extended for this flow (see
@@ -143,8 +226,15 @@ payment confirmation, delivery update, account invite/link, or note, recording t
 message, and whether the email actually sent (`notified`, `email_to`, `email_subject`, plus the
 Resend id or error in `metadata`).
 
-**`system_state`** — key/value heartbeats. The delivery cron writes `delivery_cron` here on every
-sweep, which is what `/admin/system` reads to tell you whether the schedule is alive.
+**`system_state`** — key/value heartbeats. Each sweep writes `delivery_cron` or `abandoned_cron`
+here, which is what `/admin/system` reads to tell you whether the schedule is alive.
+
+**`announcements`**, **`articles`**, **`wishlists`** — the notice stripe with its own schedule per
+notice, long-form content, and saved products.
+
+Migrations are numbered and **every one is safe to run twice** — `create table if not exists`,
+`add column if not exists`, guarded policies and triggers. A migration that fails on a second run
+is one nobody dares run during a restore.
 
 ## Security model
 
@@ -162,7 +252,7 @@ sweep, which is what `/admin/system` reads to tell you whether the schedule is a
 ## Repository layout
 
 ```
-backend/           Express API (Render)
+backend/           Express API (Render); imports the shared modules by path
   src/env.ts         configuration + integration status
   src/email.ts       every Resend template
   src/orders/        setOrderStatus, account linking, Stripe sync, cron sweep
@@ -170,6 +260,7 @@ backend/           Express API (Render)
   src/routes/        public, orders, account, admin, cron
   src/scheduler.ts   optional in-process cron fallback
 frontend/          Next.js storefront + admin (Cloudflare Workers via OpenNext)
+  src/shared/core/   the dependency-free modules, shared with the API
   src/lib/brand.ts   name, domain, department inboxes
   src/app/admin/     admin panel, incl. orders/paid and system
 workers/cron/      scheduled Worker that drives the delivery sweep

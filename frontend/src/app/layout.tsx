@@ -10,7 +10,7 @@ import Footer from "@/components/Footer";
 import AnnouncementStripe from "@/components/AnnouncementStripe";
 import JsonLd from "@/components/JsonLd";
 import PublicEnvScript from "@/components/PublicEnvScript";
-import { organizationJsonLd, websiteJsonLd } from "@shared/core/trust";
+import { organizationJsonLd, websiteJsonLd } from "@/shared/core/trust";
 import "./globals.css";
 
 const anton = Anton({ weight: "400", subsets: ["latin"], variable: "--font-anton" });

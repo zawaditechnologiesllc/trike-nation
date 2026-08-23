@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import { assessRisk, type OrderOrigin } from "../../../shared/core/risk";
+import { assessRisk, type OrderOrigin } from "../../../frontend/src/shared/core/risk";
 
 /**
  * What the CDN already knows about the connection, plus the timezone the

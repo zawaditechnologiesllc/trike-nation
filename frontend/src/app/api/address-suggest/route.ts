@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { serverEnv } from "@/lib/env";
-import { sanitiseSearch } from "@shared/core/validation";
+import { sanitiseSearch } from "@/shared/core/validation";
 
 /**
  * Address autocomplete, proxied.

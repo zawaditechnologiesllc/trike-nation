@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { fetchProducts } from "@/lib/api";
-import { sanitiseSearch } from "@shared/core/validation";
+import { sanitiseSearch } from "@/shared/core/validation";
 import ProductCard from "@/components/ProductCard";
 
 export const metadata: Metadata = { title: "Search" };

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { derivePriceBands, parsePriceRange, withinRange } from "../../shared/core/price-bands";
+import { derivePriceBands, parsePriceRange, withinRange } from "../src/shared/core/price-bands";
 
 const CATALOGUE = [8_500, 65_000, 110_000, 129_900, 129_900, 139_900, 165_000, 189_900, 249_900];
 

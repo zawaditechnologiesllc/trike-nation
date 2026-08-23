@@ -30,11 +30,17 @@ Every variable named below is documented in [ENVIRONMENT.md](./ENVIRONMENT.md).
    supabase/migrations/001_init.sql
    supabase/migrations/002_admin_payments.sql
    supabase/migrations/003_manual_approval.sql
+   supabase/migrations/004_storefront_complete.sql
    supabase/seed.sql
    ```
-   `003` is the one this store depends on: order events, the payment audit trail, the delivery
-   milestones, the guest-order trigger, and the RLS policies that match orders by email. Skipping
-   it leaves the API writing to columns that do not exist.
+   `003` adds order events, the payment audit trail, the guest-order trigger and the RLS policies
+   that match orders by email. `004` adds human order numbers, the fulfilment stage fields, product
+   colours and status, announcements, articles, wishlists, and the advisory origin fields — and
+   turns `order_events.stage` into the UNIQUE constraint the whole clock depends on. Skipping
+   either leaves the API writing to columns that do not exist.
+
+   Every migration is safe to run twice, so re-running the whole set is the correct thing to do if
+   you are unsure which have been applied.
 3. Auth → Providers: keep **Email** enabled and disable every other provider. Decide whether to
    require email confirmation — if you do, a guest who accepts an account invitation has to confirm
    before their order appears.
@@ -176,6 +182,10 @@ Repository secrets the workflow needs (Settings → Secrets and variables → Ac
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API                    |
 
 `.github/workflows/ci.yml` typechecks and builds both apps on pull requests.
+
+`.github/workflows/cron-backup.yml` ticks the clock hourly as a backup for the Cloudflare Worker —
+a scheduler with no backup fails silently, and the first sign is a customer asking where their
+order is. It needs two more repository secrets, `CRON_SECRET` and `API_URL`.
 
 To deploy from a terminal instead:
 

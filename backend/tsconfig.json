@@ -13,6 +13,6 @@
   },
   "include": [
     "src",
-    "../shared/**/*.ts"
+    "../frontend/src/shared/**/*.ts"
   ]
 }

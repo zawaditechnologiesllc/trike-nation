@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { couriersByRegion, generateInternalReference, trackingLink } from "@shared/core/couriers";
+import { couriersByRegion, generateInternalReference, trackingLink } from "@/shared/core/couriers";
 
 /**
  * Courier picker and tracking number.

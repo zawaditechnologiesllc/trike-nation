@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { addressVocabulary, countryOptions } from "@shared/core/countries";
-import type { AddressInput, FieldError } from "@shared/core/validation";
+import { addressVocabulary, countryOptions } from "@/shared/core/countries";
+import type { AddressInput, FieldError } from "@/shared/core/validation";
 
 /**
  * Country FIRST, then everything that depends on it.

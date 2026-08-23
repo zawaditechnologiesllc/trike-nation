@@ -7,7 +7,7 @@ import {
   defaultColor,
   parseColors,
   resolveColor,
-} from "../../shared/core/colors";
+} from "../src/shared/core/colors";
 
 // Each test says what breaks on the live shop when it fails.
 

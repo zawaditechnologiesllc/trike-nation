@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PdfDocument, PAGE, foldToWinAnsi, rgb, textWidth, wrapText } from "../../shared/core/pdf";
-import { probeLogoBytes } from "../../shared/core/image-probe";
+import { PdfDocument, PAGE, foldToWinAnsi, rgb, textWidth, wrapText } from "../src/shared/core/pdf";
+import { probeLogoBytes } from "../src/shared/core/image-probe";
 
 test("folding is IDEMPOTENT, so an en dash does not vanish on a second pass", () => {
   // Fold twice and the dash must still be there. The bug this replaces turned

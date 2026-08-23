@@ -6,8 +6,8 @@ import {
   productJsonLd,
   trustChecklist,
   websiteJsonLd,
-} from "../../shared/core/trust";
-import { isAiCrawler, AI_CRAWLER_TOKENS, SEARCH_CRAWLERS_NEVER_BLOCK, GENERIC_CLIENTS_NEVER_BLOCK } from "../../shared/core/ai-crawlers";
+} from "../src/shared/core/trust";
+import { isAiCrawler, AI_CRAWLER_TOKENS, SEARCH_CRAWLERS_NEVER_BLOCK, GENERIC_CLIENTS_NEVER_BLOCK } from "../src/shared/core/ai-crawlers";
 
 const store = {
   name: "Go Cart Grip",

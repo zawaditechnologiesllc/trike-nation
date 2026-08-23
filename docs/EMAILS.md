@@ -19,15 +19,37 @@ Triggers: [`backend/src/orders/service.ts`](../backend/src/orders/service.ts).
 | 7 | Status → `delivered` | `Delivered — #ABCD1234` | `sendOrderStatusChanged` |
 | 8 | Status → `cancelled` | `Order cancelled — #ABCD1234` | `sendOrderStatusChanged` |
 | 9 | Status → `refunded` | `Refund issued — #ABCD1234` | `sendOrderStatusChanged` |
-| 10 | Day 7 / 12 / 20 after confirmed payment (cron) | `Day 12 update — #ABCD1234` | `sendDeliveryUpdate` |
-| 11 | Newsletter signup | `Welcome to the Crew` | `sendNewsletterWelcome` |
+| 10 | Day 7 / 12 / 20 after confirmed payment (cron) | `In transit — final stretch — GCG-2026-0148` | `sendDeliveryUpdate` |
+| 11 | Order placed but never paid, then day 3 / 7 / 12 | `You left something in your cart` | `sendAbandonedCart` |
+| 12 | Newsletter signup | `Welcome to the Crew` | `sendNewsletterWelcome` |
+
+**The abandoned-cart email is not a confirmation.** Sending one for an unpaid
+order teaches customers that "confirmed" means nothing. It shows what they
+chose and links back to a cart that still has it.
+
+Chasing stops permanently the moment that address buys anything, and the
+purchase check fails **safe** — if it errors, the send is skipped, because
+emailing "you left something behind" to somebody who already paid is worse than
+silence. It never invents a discount, a deadline or a stock scare.
 
 A guest whose payment is confirmed gets **both** #3 and #4: the receipt, and a separate invitation
 to claim the order. That is intentional — the invitation is the thing that turns a one-off buyer
 into an account, and burying it inside the receipt loses it.
 
 Emails #3 and #5–#9 carry an optional **note to the customer** typed by the admin, rendered as a
-quoted block. #6 includes the tracking number when one is set.
+quoted block.
+
+A tracking number is rendered as a **link** only when the courier has a known
+tracking URL and the number is not one we generated ourselves — a link that
+lands on "not found" makes the customer think nothing shipped. Otherwise it is
+shown as plain text.
+
+The shipped email carries the buffer sentence: without it a three-week estimate
+reads as a slow shop; with it, it reads as a careful one and the buyer stops
+watching the calendar.
+
+Order references use the human number (`GCG-2026-0148`) where one exists,
+falling back to the short uuid.
 
 ## To the team
 

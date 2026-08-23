@@ -1,7 +1,7 @@
 import { fetchProduct, fetchSettings } from "@/lib/api";
-import { PdfDocument, PAGE, rgb } from "@shared/core/pdf";
-import { colorsFromDescription, stripColorLines } from "@shared/core/colors";
-import { deliveryWindowLabel } from "@shared/core/delivery";
+import { PdfDocument, PAGE, rgb } from "@/shared/core/pdf";
+import { colorsFromDescription, stripColorLines } from "@/shared/core/colors";
+import { deliveryWindowLabel } from "@/shared/core/delivery";
 import { BRAND, EMAILS } from "@/lib/brand";
 
 /**
