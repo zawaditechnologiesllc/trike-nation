@@ -154,6 +154,7 @@ The modules:
 | `product-sheet.ts` | The bulk-import parser |
 | `pdf.ts`, `image-probe.ts` | The PDF writer and its honest failure reporting |
 | `ai-crawlers.ts` | The crawler tokens, read by robots.txt and middleware |
+| `orders.ts` | What an order is called to a human, in email and on screen |
 
 ## Colours
 

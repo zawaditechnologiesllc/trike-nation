@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { claimOrders } from "@/lib/api";
 import { BRAND } from "@/lib/brand";
+import { orderReference } from "@/shared/core/orders";
 
 export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const supabase = getSupabase();
@@ -77,7 +78,7 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
 
       {pendingOrder && (
         <p className="mt-6 border border-crimson bg-crimson/10 p-4 font-mono text-xs leading-relaxed text-blush">
-          Order #{pendingOrder.slice(0, 8).toUpperCase()} is waiting to be claimed.
+          Order {orderReference(pendingOrder)} is waiting to be claimed.
           {invitedEmail ? (
             <>
               {" "}

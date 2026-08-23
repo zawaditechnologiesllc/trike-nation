@@ -232,7 +232,7 @@ ordersRouter.get("/orders/:id", requireDb, async (req, res) => {
     .from("orders")
     .select(
       // One literal so supabase-js types the row (see orders/service.ts).
-      "id, status, payment_status, subtotal_cents, discount_cents, total_cents, discount_code, tracking_number, paid_at, shipped_at, delivered_at, created_at, user_id, email",
+      "id, status, payment_status, subtotal_cents, discount_cents, total_cents, discount_code, tracking_number, paid_at, shipped_at, delivered_at, created_at, user_id, email, order_number",
     )
     .eq("id", req.params.id)
     .maybeSingle();
@@ -253,6 +253,7 @@ ordersRouter.get("/orders/:id", requireDb, async (req, res) => {
 
   res.json({
     id: data.id,
+    orderNumber: data.order_number ?? undefined,
     status: data.status,
     paymentStatus: data.payment_status,
     subtotalCents: data.subtotal_cents,

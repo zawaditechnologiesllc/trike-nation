@@ -9,6 +9,7 @@ import {
   type AdminPaidOrders,
 } from "@/lib/admin";
 import { money } from "@/lib/format";
+import { orderReference } from "@/shared/core/orders";
 
 const RANGES = [
   { label: "All time", days: 0 },
@@ -144,7 +145,7 @@ export default function PaidOrdersPage() {
                 <tbody>
                   {data.orders.map((o) => (
                     <tr key={o.id} className="border-t border-steel/60 bg-carbon">
-                      <td className="px-4 py-3 font-mono text-xs">#{o.id.slice(0, 8).toUpperCase()}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{orderReference(o.id, o.order_number)}</td>
                       <td className="px-4 py-3 font-mono text-xs text-silver">
                         {o.paid_at
                           ? new Date(o.paid_at).toLocaleDateString("en-US", { dateStyle: "medium" })

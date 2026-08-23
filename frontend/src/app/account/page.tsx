@@ -9,6 +9,7 @@ import { DELIVERY_WINDOW } from "@/lib/brand";
 import { money } from "@/lib/format";
 import OrderStatusBadge from "@/components/OrderStatusBadge";
 import type { AccountOrder } from "@/lib/types";
+import { orderReference } from "@/shared/core/orders";
 
 function AccountContent() {
   const { user, session, loading, enabled, signOut } = useAuth();
@@ -65,7 +66,7 @@ function AccountContent() {
 
       {justClaimed && (
         <p className="mt-6 border border-success/50 bg-success/10 p-4 font-mono text-xs text-success">
-          Order #{justClaimed.slice(0, 8).toUpperCase()} is now linked to this account.
+          Order {orderReference(justClaimed)} is now linked to this account.
         </p>
       )}
 
@@ -145,7 +146,7 @@ function AccountContent() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-mono text-xs text-silver">
-                        #{order.id.slice(0, 8).toUpperCase()}
+                        {orderReference(order.id, order.orderNumber)}
                       </p>
                       <p className="mt-1 text-sm text-chrome">
                         {new Date(order.createdAt ?? "").toLocaleDateString("en-US", {

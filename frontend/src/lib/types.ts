@@ -86,6 +86,8 @@ export interface OrderTimelineEntry {
 
 export interface OrderSummary {
   id: string;
+  /** Human reference (GCG-2026-0148). Absent on orders placed before numbering. */
+  orderNumber?: string;
   status: string;
   paymentStatus?: string;
   subtotalCents: number;

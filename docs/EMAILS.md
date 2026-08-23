@@ -10,15 +10,15 @@ Triggers: [`backend/src/orders/service.ts`](../backend/src/orders/service.ts).
 
 | # | Trigger | Subject | Function |
 | - | ------- | ------- | -------- |
-| 1 | Order placed (Checkout Session created) | `We've got your order — #ABCD1234` | `sendOrderReceived` |
-| 2 | Buyer returns from Stripe; the session sync reports paid | `Payment received, verifying — #ABCD1234` | `sendOrderStatusChanged` |
-| 3 | **An admin confirms the payment** | `Payment confirmed — #ABCD1234` | `sendPaymentConfirmed` |
-| 4 | Confirmation, buyer has no account | `Create your account to track #ABCD1234` | `sendAccountInvite` |
-| 5 | Status → `processing` | `In the build queue — #ABCD1234` | `sendOrderStatusChanged` |
-| 6 | Status → `shipped` | `Your order shipped — #ABCD1234` | `sendOrderStatusChanged` |
-| 7 | Status → `delivered` | `Delivered — #ABCD1234` | `sendOrderStatusChanged` |
-| 8 | Status → `cancelled` | `Order cancelled — #ABCD1234` | `sendOrderStatusChanged` |
-| 9 | Status → `refunded` | `Refund issued — #ABCD1234` | `sendOrderStatusChanged` |
+| 1 | Order placed (Checkout Session created) | `We've got your order — GCG-2026-0148` | `sendOrderReceived` |
+| 2 | Buyer returns from Stripe; the session sync reports paid | `Payment received, verifying — GCG-2026-0148` | `sendOrderStatusChanged` |
+| 3 | **An admin confirms the payment** | `Payment confirmed — GCG-2026-0148` | `sendPaymentConfirmed` |
+| 4 | Confirmation, buyer has no account | `Create your account to track GCG-2026-0148` | `sendAccountInvite` |
+| 5 | Status → `processing` | `In the build queue — GCG-2026-0148` | `sendOrderStatusChanged` |
+| 6 | Status → `shipped` | `Your order shipped — GCG-2026-0148` | `sendOrderStatusChanged` |
+| 7 | Status → `delivered` | `Delivered — GCG-2026-0148` | `sendOrderStatusChanged` |
+| 8 | Status → `cancelled` | `Order cancelled — GCG-2026-0148` | `sendOrderStatusChanged` |
+| 9 | Status → `refunded` | `Refund issued — GCG-2026-0148` | `sendOrderStatusChanged` |
 | 10 | Day 7 / 12 / 20 after confirmed payment (cron) | `In transit — final stretch — GCG-2026-0148` | `sendDeliveryUpdate` |
 | 11 | Order placed but never paid, then day 3 / 7 / 12 | `You left something in your cart` | `sendAbandonedCart` |
 | 12 | Newsletter signup | `Welcome to the Crew` | `sendNewsletterWelcome` |
@@ -49,13 +49,20 @@ reads as a slow shop; with it, it reads as a careful one and the buyer stops
 watching the calendar.
 
 Order references use the human number (`GCG-2026-0148`) where one exists,
-falling back to the short uuid.
+falling back to the short uuid for rows created before numbering.
+
+That string comes from `orderReference` in `shared/core/orders.ts`, and every
+screen reads the same function — the order page, the account list, the admin
+tables. A second implementation is how a buyer ends up with an email naming
+`GCG-2026-0148` and an order page headed `#CA152614`, unable to tell that they
+are the same order. Any new email or screen must call it rather than slicing
+the uuid itself.
 
 ## To the team
 
 | Trigger | Subject | Sent to | Function |
 | ------- | ------- | ------- | -------- |
-| Order placed | `Order awaiting confirmation — #ABCD1234 ($1,709.10)` | `ADMIN_EMAIL` | `sendAdminNewOrder` |
+| Order placed | `Order awaiting confirmation — GCG-2026-0148 ($1,709.10)` | `ADMIN_EMAIL` | `sendAdminNewOrder` |
 | Contact form submitted | `New contact message: <subject>` | `ADMIN_EMAIL` | `sendContactNotification` |
 
 The new-order alert is what stops a payment sitting unconfirmed — it links straight to the order in

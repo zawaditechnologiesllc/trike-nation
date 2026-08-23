@@ -23,13 +23,14 @@ accountRouter.use(async (req, res, next) => {
 
 // Kept as one literal so supabase-js can type the rows (see orders/service.ts).
 const ORDER_FIELDS =
-  "id, status, payment_status, total_cents, subtotal_cents, discount_cents, discount_code, tracking_number, created_at, paid_at, shipped_at, delivered_at, user_id, email";
+  "id, status, payment_status, total_cents, subtotal_cents, discount_cents, discount_code, tracking_number, created_at, paid_at, shipped_at, delivered_at, user_id, email, order_number";
 const ORDER_DETAIL_FIELDS =
-  "id, status, payment_status, total_cents, subtotal_cents, discount_cents, discount_code, tracking_number, created_at, paid_at, shipped_at, delivered_at, user_id, email, shipping";
+  "id, status, payment_status, total_cents, subtotal_cents, discount_cents, discount_code, tracking_number, created_at, paid_at, shipped_at, delivered_at, user_id, email, shipping, order_number";
 
 function shape(row: Record<string, unknown>) {
   return {
     id: row.id as string,
+    orderNumber: (row.order_number as string | null) ?? undefined,
     status: row.status as string,
     paymentStatus: row.payment_status as string,
     subtotalCents: row.subtotal_cents as number,

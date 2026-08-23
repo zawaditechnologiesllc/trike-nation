@@ -2,6 +2,7 @@ import { env } from "./env";
 import { BUFFER_EXPLANATION, deliveryWindowLabel } from "../../frontend/src/shared/core/delivery";
 import { stageDefinition } from "../../frontend/src/shared/core/stages";
 import { trackingLink } from "../../frontend/src/shared/core/couriers";
+import { orderReference } from "../../frontend/src/shared/core/orders";
 
 /**
  * Transactional email via Resend (https://resend.com/docs/api-reference).
@@ -11,8 +12,7 @@ import { trackingLink } from "../../frontend/src/shared/core/couriers";
  */
 
 const money = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-const ref = (orderId: string, orderNumber?: string | null) =>
-  orderNumber?.trim() ? orderNumber.trim() : `#${orderId.slice(0, 8).toUpperCase()}`;
+const ref = orderReference;
 
 export interface SendResult {
   ok: boolean;
@@ -322,10 +322,15 @@ export function sendOrderStatusChanged(
   to: string,
   orderId: string,
   status: string,
-  opts?: { trackingNumber?: string | null; courier?: string | null; note?: string | null },
+  opts?: {
+    trackingNumber?: string | null;
+    courier?: string | null;
+    note?: string | null;
+    orderNumber?: string | null;
+  },
 ): Promise<SendResult> {
   const copy = STATUS_COPY[status];
-  const orderRef = ref(orderId);
+  const orderRef = ref(orderId, opts?.orderNumber);
   const note = opts?.note?.trim() ? opts.note.trim() : null;
   const noteBlock = note
     ? `<p style="border-left:3px solid #b31d28;color:#c8c6c5;font-size:14px;line-height:1.7;margin:0 0 14px;padding-left:12px">${escape(note)}</p>`
@@ -390,9 +395,10 @@ export function sendDeliveryUpdate(
     courier?: string | null;
     countryCode?: string | null;
     items?: { name: string; qty: number; color?: string | null }[];
+    orderNumber?: string | null;
   },
 ): Promise<SendResult> {
-  const orderRef = ref(orderId);
+  const orderRef = ref(orderId, opts?.orderNumber);
   const stage = stageDefinition(stageKey);
   const title = stage?.title ?? "Delivery progress";
   const body = stage?.body ?? "Your order is moving through the pipeline.";
@@ -459,15 +465,21 @@ export function sendAbandonedCart(
 // 5. Guest → account invite
 // ---------------------------------------------------------------------------
 
-export function sendAccountInvite(to: string, signupUrl: string, orderId?: string): Promise<SendResult> {
+export function sendAccountInvite(
+  to: string,
+  signupUrl: string,
+  orderId?: string,
+  orderNumber?: string | null,
+): Promise<SendResult> {
+  const reference = orderId ? ref(orderId, orderNumber) : null;
   return sendEmail(
     to,
-    orderId ? `Create your account to track ${ref(orderId)}` : `Create your ${env.brandName} account`,
+    reference ? `Create your account to track ${reference}` : `Create your ${env.brandName} account`,
     shell(
       "Claim your order",
       p(
-        orderId
-          ? `Order <strong>${ref(orderId)}</strong> is confirmed and tied to <strong>${escape(to)}</strong>.`
+        reference
+          ? `Order <strong>${reference}</strong> is confirmed and tied to <strong>${escape(to)}</strong>.`
           : `Your order is tied to <strong>${escape(to)}</strong>.`,
       ) +
         p(

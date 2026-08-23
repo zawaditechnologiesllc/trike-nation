@@ -13,6 +13,7 @@ import {
 import { money } from "@/lib/format";
 import TrackingFields from "@/components/admin/TrackingFields";
 import RiskPanel from "@/components/admin/RiskPanel";
+import { orderReference } from "@/shared/core/orders";
 
 export default function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -177,7 +178,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         ← All orders
       </Link>
       <div className="mt-2 flex flex-wrap items-center gap-4">
-        <h1 className="display text-3xl">#{order.id.slice(0, 8).toUpperCase()}</h1>
+        <h1 className="display text-3xl">{orderReference(order.id, order.order_number)}</h1>
         <span className={`label-caps ${statusTone(order.status)}`}>{formatStatus(order.status)}</span>
         <span className={`label-caps ${isPaid ? "text-success" : "text-silver"}`}>
           stripe · {order.payment_status}

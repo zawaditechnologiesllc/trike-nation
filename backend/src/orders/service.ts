@@ -88,11 +88,21 @@ export async function getOrder(orderId: string): Promise<OrderRow | null> {
 export async function getOrderEmailData(order: OrderRow): Promise<OrderEmailData> {
   const { data: items } = await db()
     .from("order_items")
-    .select("product_name, qty, unit_price_cents")
+    .select("product_name, qty, unit_price_cents, color")
     .eq("order_id", order.id);
   return {
     id: order.id,
-    items: (items ?? []).map((i) => ({ name: i.product_name, qty: i.qty, unitCents: i.unit_price_cents })),
+    // Every email after the receipt is built from this one function. Omit a
+    // field here and only the receipt has it: the buyer gets one email naming
+    // the order GCG-2026-0148 and five more calling it #CA152614. Same for the
+    // colour they chose.
+    orderNumber: order.order_number,
+    items: (items ?? []).map((i) => ({
+      name: i.product_name,
+      qty: i.qty,
+      unitCents: i.unit_price_cents,
+      color: i.color,
+    })),
     subtotalCents: order.subtotal_cents,
     discountCents: order.discount_cents,
     totalCents: order.total_cents,
@@ -193,7 +203,7 @@ export async function linkOrderToAccount(order: OrderRow): Promise<{ linked: boo
   if (order.account_invite_sent_at) return { linked: false, invited: false };
 
   const url = signupUrlFor(order.email, order.id);
-  const result = await sendAccountInvite(order.email, url, order.id);
+  const result = await sendAccountInvite(order.email, url, order.id, order.order_number);
   await db()
     .from("orders")
     .update({ account_invite_sent_at: new Date().toISOString() })
@@ -332,6 +342,7 @@ export async function setOrderStatus(
     emailResult = await sendOrderStatusChanged(order.email, orderId, status, {
       trackingNumber,
       note: opts.note ?? null,
+      orderNumber: order.order_number,
     });
   }
 
@@ -552,6 +563,7 @@ export async function runDeliveryUpdates(now = new Date()): Promise<SweepResult>
       courier: row.courier,
       countryCode: shippingCountry(row),
       items: await itemsFor(row.id),
+      orderNumber: row.order_number,
     });
 
     if (claim.eventId) {

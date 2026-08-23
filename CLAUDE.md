@@ -38,7 +38,8 @@ variable is an empty string in the browser and the feature dies silently. Use `s
 server, `clientEnv()`/`ensureClientEnv()` in the browser — see `frontend/src/lib/env.ts`.
 
 **`frontend/src/shared/core` is the one definition of each fact.** Delivery windows, the stage
-schedule, colours, couriers, validation, price bands, risk scoring, the PDF writer.
+schedule, colours, couriers, validation, price bands, risk scoring, the order reference, the
+PDF writer.
 
 It lives inside the app on purpose. Turbopack will not resolve modules outside the app root —
 not by tsconfig path, not by alias, not through a symlink — and forcing it with `turbopack.root`

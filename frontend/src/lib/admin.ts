@@ -53,6 +53,7 @@ export interface AdminStats {
   unreadMessages: number;
   recentOrders: {
     id: string;
+    orderNumber: string | null;
     email: string;
     status: string;
     paymentStatus: string;
@@ -63,6 +64,7 @@ export interface AdminStats {
 
 export interface AdminOrderRow {
   id: string;
+  order_number: string | null;
   email: string;
   status: string;
   payment_status: string;

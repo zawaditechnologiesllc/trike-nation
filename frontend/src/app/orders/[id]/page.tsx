@@ -9,6 +9,7 @@ import { money } from "@/lib/format";
 import OrderStatusBadge from "@/components/OrderStatusBadge";
 import OrderTimeline from "@/components/OrderTimeline";
 import type { OrderSummary } from "@/lib/types";
+import { orderReference } from "@/shared/core/orders";
 
 /**
  * Order tracking, reachable by anyone holding the order's uuid — that is what
@@ -69,7 +70,7 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
     <div className="mx-auto max-w-4xl px-4 py-16 md:px-12">
       <p className="label-caps text-blush">Order Tracking</p>
       <div className="mt-2 flex flex-wrap items-center gap-4">
-        <h1 className="display text-4xl md:text-5xl">#{order.id.slice(0, 8).toUpperCase()}</h1>
+        <h1 className="display text-4xl md:text-5xl">{orderReference(order.id, order.orderNumber)}</h1>
         <OrderStatusBadge status={order.status} />
       </div>
       {order.emailHint && (
@@ -176,7 +177,7 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
           <div className="border-t border-steel pt-4">
             <p className="label-caps text-silver">Questions</p>
             <a
-              href={`mailto:${EMAILS.orders}?subject=Order%20%23${order.id.slice(0, 8).toUpperCase()}`}
+              href={`mailto:${EMAILS.orders}?subject=${encodeURIComponent(`Order ${orderReference(order.id, order.orderNumber)}`)}`}
               className="mt-2 block break-all font-mono text-xs text-ember hover:text-blush"
             >
               {EMAILS.orders}

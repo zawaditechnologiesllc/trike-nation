@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { adminFetch, formatStatus, statusTone, type AdminStats } from "@/lib/admin";
 import { money } from "@/lib/format";
+import { orderReference } from "@/shared/core/orders";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -80,7 +81,7 @@ export default function AdminDashboard() {
             <tbody>
               {stats.recentOrders.map((o) => (
                 <tr key={o.id} className="border-t border-steel/60 bg-carbon">
-                  <td className="px-4 py-3 font-mono text-xs">#{o.id.slice(0, 8).toUpperCase()}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{orderReference(o.id, o.orderNumber)}</td>
                   <td className="px-4 py-3 text-chrome">{o.email}</td>
                   <td
                     className={`label-caps px-4 py-3 ${

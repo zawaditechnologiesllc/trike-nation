@@ -9,6 +9,7 @@ import { useCart } from "@/lib/cart";
 import { DELIVERY_WINDOW } from "@/lib/brand";
 import { money } from "@/lib/format";
 import type { OrderSummary } from "@/lib/types";
+import { orderReference } from "@/shared/core/orders";
 
 function SuccessContent() {
   const params = useSearchParams();
@@ -100,7 +101,7 @@ function SuccessContent() {
           <div className="spec-row">
             <dt className="label-caps text-silver">Order ID</dt>
             <span className="spec-leader" />
-            <dd className="font-mono text-sm font-bold">#{order.id.slice(0, 8).toUpperCase()}</dd>
+            <dd className="font-mono text-sm font-bold">{orderReference(order.id, order.orderNumber)}</dd>
           </div>
           <div className="spec-row">
             <dt className="label-caps text-silver">Status</dt>

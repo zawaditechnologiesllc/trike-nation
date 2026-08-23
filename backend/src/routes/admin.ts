@@ -42,7 +42,7 @@ adminRouter.get("/me", (req, res) => {
 
 adminRouter.get("/stats", async (_req, res) => {
   const [orders, products, subscribers, messages] = await Promise.all([
-    db().from("orders").select("id, status, payment_status, total_cents, created_at, email, user_id"),
+    db().from("orders").select("id, status, payment_status, total_cents, created_at, email, user_id, order_number"),
     db().from("products").select("id, in_stock"),
     db().from("newsletter_subscribers").select("email"),
     db().from("contact_messages").select("id, read"),
@@ -67,6 +67,7 @@ adminRouter.get("/stats", async (_req, res) => {
       .slice(0, 8)
       .map((o) => ({
         id: o.id,
+        orderNumber: o.order_number,
         email: o.email,
         status: o.status,
         paymentStatus: o.payment_status,
@@ -82,7 +83,7 @@ adminRouter.get("/stats", async (_req, res) => {
 
 // Kept as one literal so supabase-js can type the rows (see orders/service.ts).
 const ORDER_LIST_FIELDS =
-  "id, email, status, payment_status, payment_provider, total_cents, discount_code, tracking_number, created_at, paid_at, shipped_at, delivered_at, user_id, stripe_reported_status, stripe_amount_total_cents, account_invite_sent_at, origin_country, risk_level, fulfillment_stage, courier";
+  "id, email, status, payment_status, payment_provider, total_cents, discount_code, tracking_number, created_at, paid_at, shipped_at, delivered_at, user_id, stripe_reported_status, stripe_amount_total_cents, account_invite_sent_at, origin_country, risk_level, fulfillment_stage, courier, order_number";
 
 adminRouter.get("/orders", async (req, res) => {
   const status = req.query.status as string | undefined;
@@ -276,6 +277,7 @@ adminRouter.post("/orders/:id/notify", async (req, res) => {
   const result = await sendOrderStatusChanged(order.email, order.id, order.status, {
     trackingNumber: order.tracking_number,
     note,
+    orderNumber: order.order_number,
   });
   await recordEvent({
     orderId: order.id,
@@ -334,6 +336,7 @@ adminRouter.post("/orders/:id/stage", async (req, res) => {
     courier: order.courier,
     countryCode: typeof shipping?.country === "string" ? shipping.country : null,
     items: (items ?? []).map((i) => ({ name: i.product_name, qty: i.qty, color: i.color })),
+    orderNumber: order.order_number,
   });
   if (claim.eventId) {
     await markClaimResult(claim.eventId, {

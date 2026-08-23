@@ -66,6 +66,15 @@ const tables = {
   contact_messages: [],
 };
 
+// Mirrors public.order_number_seq + the orders_set_order_number trigger from
+// migration 004. Without it the stub hands back an order with no number and
+// every screen that prints one goes blank locally while production is fine.
+let orderNumberSeq = 0;
+function nextOrderNumber() {
+  orderNumberSeq += 1;
+  return `GCG-${new Date().getUTCFullYear()}-${String(orderNumberSeq).padStart(4, "0")}`;
+}
+
 const DEFAULTS = {
   orders: () => ({
     id: randomUUID(), created_at: now(), status: "pending_payment", payment_status: "unpaid",
@@ -306,6 +315,11 @@ const supabaseStub = createServer(async (req, res) => {
         }
       }
       const withDefaults = { ...(DEFAULTS[match[1]]?.() ?? {}), ...row };
+      // The orders_set_order_number BEFORE INSERT trigger: allocate only when
+      // the caller did not supply one, exactly as the trigger does.
+      if (match[1] === "orders" && !withDefaults.order_number) {
+        withDefaults.order_number = nextOrderNumber();
+      }
       // Unique key checks, so local dev hits the same conflicts production does.
       if (match[1] === "products" && table.some((r) => r.slug === withDefaults.slug)) {
         return json(res, 409, { code: "23505", message: "duplicate key value violates unique constraint" });
