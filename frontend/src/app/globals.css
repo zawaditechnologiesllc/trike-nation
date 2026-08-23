@@ -1,7 +1,13 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+ * Design tokens. Re-skinning the store is editing THIS BLOCK and nothing else:
+ * the raw palette below feeds the semantic names, and components only ever
+ * reference the semantic names (bg-surface, text-primary), never a hex.
+ * ------------------------------------------------------------------------- */
+
 @theme inline {
-  /* Apex Rugged — Stealth & Fire palette */
+  /* --- Raw palette: Apex Rugged, "Stealth & Fire" ------------------------ */
   --color-night: #0f0f0f;
   --color-coal: #131313;
   --color-carbon: #1a1a1a;
@@ -19,20 +25,75 @@
      not fully configured. */
   --color-amber: #fbbf24;
 
+  /* --- Semantic surfaces -------------------------------------------------
+   * Elevation runs lowest → highest; a card on a page sits one step above it.
+   * Swap the right-hand side to re-skin, including to a light base. */
+  --color-background: var(--color-night);
+  --color-surface: var(--color-night);
+  --color-surface-container-lowest: var(--color-coal);
+  --color-surface-container-low: var(--color-carbon);
+  --color-surface-container: var(--color-carbon);
+  --color-surface-container-high: var(--color-carbon-high);
+  --color-surface-container-highest: var(--color-steel);
+
+  /* --- Semantic content -------------------------------------------------
+   * on-surface clears 4.5:1 on every surface above; on-surface-variant is for
+   * secondary text only and clears 4.5:1 on surface and surface-container. */
+  --color-on-surface: var(--color-offwhite);
+  --color-on-surface-variant: var(--color-chrome);
+  --color-on-surface-muted: var(--color-silver);
+  --color-outline: var(--color-steel);
+  --color-outline-variant: var(--color-steel-light);
+  --color-off-white: var(--color-offwhite);
+
+  /* --- Actions -----------------------------------------------------------
+   * primary carries the calls to action; secondary carries links and the
+   * lighter of the two accents. */
+  --color-primary: var(--color-crimson);
+  --color-primary-container: var(--color-ember);
+  --color-on-primary: var(--color-offwhite);
+  --color-secondary: var(--color-ember);
+  --color-on-secondary-fixed: var(--color-blush);
+
+  /* --- Status ------------------------------------------------------------ */
+  --color-error: var(--color-ember);
+  --color-signal-orange: var(--color-amber);
+  --color-signal-positive: var(--color-success);
+
+  /* --- Type scale -------------------------------------------------------- */
   --font-display: var(--font-anton), "Arial Black", sans-serif;
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  --text-display-lg: 3.75rem;
+  --text-display-lg--line-height: 1;
+  --text-headline-xl: 3rem;
+  --text-headline-xl--line-height: 1.05;
+  --text-headline-md: 1.875rem;
+  --text-headline-md--line-height: 1.15;
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.7;
+  --text-body-md: 0.9375rem;
+  --text-body-md--line-height: 1.65;
+  --text-label-bold: 0.75rem;
+  --text-label-bold--line-height: 1.2;
+
+  /* --- Layout rhythm ----------------------------------------------------- */
+  --spacing-gutter: 1rem;
+  --spacing-margin-mobile: 1rem;
+  --spacing-margin-desktop: 3rem;
+  --container-page: 80rem;
 }
 
 body {
-  background: var(--color-night);
-  color: var(--color-offwhite);
+  background: var(--color-background);
+  color: var(--color-on-surface);
   font-family: var(--font-sans);
 }
 
 ::selection {
-  background: var(--color-crimson);
-  color: var(--color-offwhite);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 /* Technical label — JetBrains Mono caps used for "data" points */
@@ -105,4 +166,58 @@ body {
 .dotted-panel {
   background-image: radial-gradient(rgba(142, 142, 147, 0.14) 1px, transparent 1px);
   background-size: 14px 14px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Signature flourishes. Defined once here rather than scattered inline: they
+ * cost nothing and they are what stops the site reading as a template.
+ * ------------------------------------------------------------------------- */
+
+/* Angled section divider — a hard diagonal cut at the top of a band. */
+.cut-top {
+  clip-path: polygon(0 2.5rem, 100% 0, 100% 100%, 0 100%);
+}
+.cut-bottom {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 2.5rem), 0 100%);
+}
+
+/* Cards lift and light their edge on hover. Disabled for reduced-motion. */
+.lift {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+.lift:hover {
+  transform: translateY(-4px);
+  border-color: var(--color-primary);
+  box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.8);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lift,
+  .lift:hover {
+    transform: none;
+    transition: border-color 180ms ease;
+  }
+}
+
+/* Announcement stripe: a continuous left-to-right crawl. Duration is set
+   per-instance so a longer list scrolls at the same speed, not faster. */
+@keyframes stripe-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.stripe-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: stripe-scroll linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .stripe-track {
+    animation: none;
+  }
 }
