@@ -41,7 +41,7 @@
   "products": [
     {
       "slug": "viper-special-edition-tgv-mini-trike",
-      "name": "“Viper” Special Edition TGV Mini Trike",
+      "name": "\u201cViper\u201d Special Edition TGV Mini Trike",
       "category": "mini-trikes",
       "priceCents": 110000,
       "compareAtCents": 120000,
@@ -49,8 +49,8 @@
         "SALE",
         "SPECIAL EDITION"
       ],
-      "blurb": "Custom Build • Worldwide Ship",
-      "description": "The Viper Special Edition is engineered for the adrenaline seeker. Featuring a reinforced TGV red-coated frame, oversized ProTaper bars, and a high-output 200cc engine, this machine delivers brutal performance on any terrain.",
+      "blurb": "Custom Build \u2022 Worldwide Ship",
+      "description": "The Viper Special Edition is engineered for the adrenaline seeker. Featuring a reinforced TGV red-coated frame, oversized ProTaper bars, and a high-output 200cc engine, this machine delivers brutal performance on any terrain.\n\nColors: Viper Red #b31d28, Midnight Black #101010, Chrome Silver #c8c6c5",
       "engineSize": "200CC",
       "specs": [
         {
@@ -107,8 +107,8 @@
       "badges": [
         "SALE"
       ],
-      "blurb": "4-Stroke • Upgraded Sleeves",
-      "description": "A drift-first go-kart built around a torquey 200cc 4-stroke and upgraded rear sleeves. Low center of gravity, wide stance, and a chromoly-reinforced frame make it the benchmark for controlled slides.",
+      "blurb": "4-Stroke \u2022 Upgraded Sleeves",
+      "description": "A drift-first go-kart built around a torquey 200cc 4-stroke and upgraded rear sleeves. Low center of gravity, wide stance, and a chromoly-reinforced frame make it the benchmark for controlled slides.\n\nAvailable in Red, Black, White, Blue, and Purple.",
       "engineSize": "200CC",
       "specs": [
         {
@@ -164,8 +164,8 @@
       "badges": [
         "60MPH"
       ],
-      "blurb": "Raw Power • Terrain Ready",
-      "description": "The Monster Minibike pairs a 212cc engine with knobby all-terrain tires and a beefed-up suspension fork. Sixty miles per hour of raw, unfiltered power in a frame you can throw in a truck bed.",
+      "blurb": "Raw Power \u2022 Terrain Ready",
+      "description": "The Monster Minibike pairs a 212cc engine with knobby all-terrain tires and a beefed-up suspension fork. Sixty miles per hour of raw, unfiltered power in a frame you can throw in a truck bed.\n\nColour options: Matte Black #1a1a1a, Sunset Orange #fb923c",
       "engineSize": "212CC",
       "specs": [
         {
@@ -221,7 +221,7 @@
       "badges": [
         "BLACK FRIDAY"
       ],
-      "blurb": "Adult/Kids Sizes • Black Finish",
+      "blurb": "Adult/Kids Sizes \u2022 Black Finish",
       "description": "A go-anywhere dune buggy with full roll cage, bucket seat, and a murdered-out black finish. Available in adult and kids sizing so the whole crew can ride.",
       "engineSize": "200CC",
       "specs": [
@@ -278,8 +278,8 @@
       "badges": [
         "ALL-TERRAIN"
       ],
-      "blurb": "Four Wheels • Zero Compromise",
-      "description": "Our flagship quad in stealth black. A 200cc thumper, dual A-arm front suspension, and racks front and rear make it as happy hauling gear as it is tearing up trails.",
+      "blurb": "Four Wheels \u2022 Zero Compromise",
+      "description": "Our flagship quad in stealth black. A 200cc thumper, dual A-arm front suspension, and racks front and rear make it as happy hauling gear as it is tearing up trails.\n\nComes in Black, Camo and Sand.",
       "engineSize": "200CC",
       "specs": [
         {
@@ -332,7 +332,7 @@
       "category": "spare-parts",
       "priceCents": 8500,
       "badges": [],
-      "blurb": "Consistent Slides • Longer Life",
+      "blurb": "Consistent Slides \u2022 Longer Life",
       "description": "The same proprietary PVC sleeves we fit to every Viper, packaged as a complete replacement kit with hardware. Fits all Go Cart Grip drift trikes and karts.",
       "engineSize": "N/A",
       "specs": [
@@ -384,8 +384,8 @@
       "badges": [
         "NEW RELEASE"
       ],
-      "blurb": "212cc Staged • Hydraulic Disc",
-      "description": "The third generation of our staged-engine flagship. The Venom V3 runs a 212cc staged build pushing 55 MPH, with hydraulic disc braking and a frame designed for full-lean drifting.",
+      "blurb": "212cc Staged \u2022 Hydraulic Disc",
+      "description": "The third generation of our staged-engine flagship. The Venom V3 runs a 212cc staged build pushing 55 MPH, with hydraulic disc braking and a frame designed for full-lean drifting.\n\nCOLOURS\n- Venom Green #4ade80\n- Midnight Black #101010\n- Hazard Lime",
       "engineSize": "212CC",
       "specs": [
         {
@@ -438,8 +438,8 @@
       "category": "drift-karts",
       "priceCents": 165000,
       "badges": [],
-      "blurb": "145 LBS • Chain-Driven",
-      "description": "A featherweight chain-driven kart built for tight circuits. At 145 lbs the Scorpion changes direction faster than anything in its class.",
+      "blurb": "145 LBS \u2022 Chain-Driven",
+      "description": "A featherweight chain-driven kart built for tight circuits. At 145 lbs the Scorpion changes direction faster than anything in its class.\n\nFinishes: Raw Steel #8e8e93, Scorpion Red #b31d28",
       "engineSize": "212CC",
       "specs": [
         {
@@ -467,7 +467,7 @@
       "features": [
         {
           "title": "Featherweight",
-          "text": "145 lbs wet — the lightest kart in the fleet."
+          "text": "145 lbs wet \u2014 the lightest kart in the fleet."
         },
         {
           "title": "Chain Drive",
@@ -490,7 +490,7 @@
       "badges": [
         "400CC"
       ],
-      "blurb": "Big Bore • Trail Dominant",
+      "blurb": "Big Bore \u2022 Trail Dominant",
       "description": "The biggest machine in the fleet. The Nighthawk's 400cc big-bore engine and long-travel suspension are built for riders who outgrew everything else.",
       "engineSize": "400CC",
       "specs": [
@@ -542,8 +542,8 @@
       "badges": [
         "ELECTRIC"
       ],
-      "blurb": "Silent Torque • Instant Slide",
-      "description": "Our first electric drift kart. Instant torque from a 3kW hub motor means the Thunder Slide breaks traction the moment you ask — silently.",
+      "blurb": "Silent Torque \u2022 Instant Slide",
+      "description": "Our first electric drift kart. Instant torque from a 3kW hub motor means the Thunder Slide breaks traction the moment you ask \u2014 silently.",
       "engineSize": "ELECTRIC",
       "specs": [
         {
@@ -571,7 +571,7 @@
       "features": [
         {
           "title": "Instant Torque",
-          "text": "100% torque at 0 RPM — slides start when you say so."
+          "text": "100% torque at 0 RPM \u2014 slides start when you say so."
         },
         {
           "title": "Silent Running",

@@ -213,6 +213,36 @@ export function parseColors(text: string | null | undefined): ProductColor[] {
   return dedupe(found);
 }
 
+/**
+ * Removes the lines the colour parser consumed, so a description is not shown
+ * with "Colors: Viper Red #b31d28, …" sitting above the swatches that render
+ * exactly that. Uses the SAME heading list and sentence detection, so a line
+ * can never be stripped from the text without appearing as a swatch, or vice
+ * versa.
+ */
+export function stripColorLines(text: string | null | undefined): string {
+  if (!text) return "";
+  const lines = text.split(/\r?\n/);
+  const heading = headingPattern();
+  const keep: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const match = line.match(heading);
+    if (match) {
+      if (!match[1]?.trim()) {
+        // Heading alone: skip its item lines too.
+        while (i + 1 < lines.length && lines[i + 1].trim() && /^\s*[-*•]/.test(lines[i + 1])) i++;
+      }
+      continue;
+    }
+    if (colorsFromSentence(line).length > 0) continue;
+    keep.push(line);
+  }
+
+  return keep.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 /** Convenience for products uploaded before the colors column existed. */
 export function colorsFromDescription(description: string | null | undefined): ProductColor[] {
   return parseColors(description);

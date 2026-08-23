@@ -2,6 +2,7 @@ import { DEFAULT_SETTINGS } from "./defaults";
 import type { AddressInput, FieldError } from "@shared/core/validation";
 import type {
   AccountOrder,
+  Announcement,
   CartItem,
   Category,
   OrderSummary,
@@ -74,6 +75,10 @@ export async function fetchProduct(slug: string): Promise<Product | undefined> {
 
 export async function fetchCategories(): Promise<Category[]> {
   return (await apiGet<Category[]>("/api/categories")) ?? [];
+}
+
+export async function fetchAnnouncements(): Promise<Announcement[]> {
+  return (await apiGet<Announcement[]>("/api/announcements", 60)) ?? [];
 }
 
 export async function fetchTestimonials(): Promise<Testimonial[]> {

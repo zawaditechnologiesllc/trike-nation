@@ -5,6 +5,8 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { BRAND } from "@/lib/brand";
 import { useCart } from "@/lib/cart";
+import { useWishlist } from "@/lib/wishlist";
+import CartDrawer from "./CartDrawer";
 import { useAuth } from "@/lib/auth";
 
 interface NavCategory {
@@ -27,17 +29,13 @@ const PAGE_LINKS = [
   { href: "/contact", label: "Contact" },
 ];
 
-export default function Header({
-  announcements = [],
-  categories,
-}: {
-  announcements?: string[];
-  categories?: NavCategory[];
-}) {
+export default function Header({ categories }: { categories?: NavCategory[] }) {
   const { count } = useCart();
+  const { count: savedCount } = useWishlist();
   const { user, enabled } = useAuth();
   const [open, setOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
   const pathname = usePathname();
   const cats = categories?.length ? categories : DEFAULT_CATEGORIES;
   const spareParts = cats.find((c) => c.slug === "spare-parts");
@@ -112,13 +110,32 @@ export default function Header({
         </nav>
 
         <div className="flex items-center gap-4">
+          <Link href="/search" aria-label="Search" className="text-chrome hover:text-ember">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </Link>
+          <Link href="/wishlist" aria-label="Wishlist" className="relative hidden text-chrome hover:text-ember sm:block">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 20s-7-4.5-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.5-7 9-7 9z" />
+            </svg>
+            {savedCount > 0 && (
+              <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-sm bg-crimson px-0.5 font-mono text-[10px] font-bold text-offwhite">
+                {savedCount}
+              </span>
+            )}
+          </Link>
           <Link
             href={user ? "/account" : "/login"}
             className="label-caps hidden text-chrome transition-colors hover:text-ember sm:block"
           >
             {user ? "Account" : enabled ? "Sign In" : "Account"}
           </Link>
-          <Link href="/cart" aria-label="Cart" className="relative text-chrome hover:text-ember">
+          {/* Opens the drawer rather than navigating: most "add to cart" ends
+              with the buyer wanting to keep shopping. The full page is still
+              linked from inside it, and reachable directly at /cart. */}
+          <button onClick={() => setCartOpen(true)} aria-label="Cart" className="relative text-chrome hover:text-ember">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="9" cy="21" r="1.5" />
               <circle cx="19" cy="21" r="1.5" />
@@ -129,7 +146,7 @@ export default function Header({
                 {count}
               </span>
             )}
-          </Link>
+          </button>
           <button
             aria-label="Menu"
             className="text-chrome hover:text-ember lg:hidden"
@@ -171,22 +188,7 @@ export default function Header({
         </nav>
       )}
 
-      {pathname === "/" && announcements.length > 0 && (
-        <div className="overflow-hidden border-t border-crimson/40 bg-coal py-2">
-          <div className="animate-marquee flex w-max whitespace-nowrap">
-            {[0, 1].map((n) => (
-              <span key={n} className="label-caps flex gap-8 pr-8 text-silver">
-                {announcements.map((text) => (
-                  <span key={text} className="flex gap-8">
-                    <span>{text}</span>
-                    <span className="text-crimson">•</span>
-                  </span>
-                ))}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </header>
   );
 }

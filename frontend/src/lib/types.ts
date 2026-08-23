@@ -147,3 +147,13 @@ export interface SiteSettings {
     threads: string;
   };
 }
+
+export interface Announcement {
+  id?: string;
+  message: string;
+  href?: string | null;
+  active?: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  position?: number;
+}

@@ -11,7 +11,8 @@ import SpecList from "@/components/SpecList";
 import Stars from "@/components/Stars";
 import ProductCard from "@/components/ProductCard";
 import SpecSheetLink from "@/components/SpecSheetLink";
-import { colorsFromDescription } from "@shared/core/colors";
+import WishlistButton from "@/components/WishlistButton";
+import { colorsFromDescription, stripColorLines } from "@shared/core/colors";
 import { productJsonLd } from "@shared/core/trust";
 import JsonLd from "@/components/JsonLd";
 import { BRAND } from "@/lib/brand";
@@ -42,6 +43,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // when an order arrives, so what the buyer sees is what gets validated.
   const colors = product.colors?.length ? product.colors : colorsFromDescription(product.description);
   const productWithColors = { ...product, colors };
+  // The colour lines are rendered as swatches below, so showing them again as
+  // raw text is duplication the admin never asked for.
+  const descriptionText = colors.length ? stripColorLines(product.description) : product.description;
   const settings = await fetchSettings();
   const category = categories.find((c) => c.slug === product.category);
   const savings =
@@ -123,7 +127,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             {savings > 0 && <Badge tone="steel">Save {money(savings)}</Badge>}
           </div>
 
-          <p className="mt-6 leading-relaxed text-chrome">{product.description}</p>
+          <p className="mt-6 leading-relaxed text-chrome">{descriptionText}</p>
 
           <div className="mt-8 space-y-6 border-t border-steel pt-8">
             {product.features.map((feature) => (
@@ -139,6 +143,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
           <div className="mt-10">
             <AddToCartButton product={productWithColors} withQty withColors />
+            <div className="mt-4 flex flex-wrap items-center gap-4">
+              <WishlistButton product={product} />
+              <SpecSheetLink slug={product.slug} />
+            </div>
             <Link
               href="/contact"
               className="display mt-3 block border border-steel-light py-3 text-center text-sm text-chrome transition-colors hover:border-ember hover:text-ember"

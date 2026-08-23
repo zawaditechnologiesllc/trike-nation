@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   COLOR_HEADINGS,
+  stripColorLines,
   colorsFromSentence,
   defaultColor,
   parseColors,
@@ -96,4 +97,29 @@ test("REFUSES a colour the product does not come in, rather than substituting", 
 test("colour matching ignores case and surrounding space", () => {
   const colors = parseColors("Colors: Midnight Black, Voltage Blue");
   assert.equal(resolveColor(colors, "  midnight black "), "Midnight Black");
+});
+
+test("the colour line is REMOVED from the description it was parsed out of", () => {
+  // Otherwise the product page shows "Colors: Viper Red #b31d28, …" as body
+  // text directly above the swatches rendering exactly that.
+  const description = "A fast trike.\n\nColors: Viper Red #b31d28, Midnight Black #101010\n\nBuilt in California.";
+  const stripped = stripColorLines(description);
+  assert.ok(!stripped.includes("#b31d28"));
+  assert.ok(!/Colors:/i.test(stripped));
+  assert.match(stripped, /A fast trike/);
+  assert.match(stripped, /Built in California/);
+});
+
+test("a sentence-form colour list is removed too", () => {
+  const stripped = stripColorLines("- Reinforced frame\n- Available in Red, Black and Blue\n- Disc brakes");
+  assert.ok(!/Available in Red/.test(stripped));
+  assert.match(stripped, /Reinforced frame/);
+  assert.match(stripped, /Disc brakes/);
+});
+
+test("stripping NEVER removes a line that produced no swatches", () => {
+  // The two use the same detection, so text can never vanish without the
+  // colours appearing — or appear as swatches while still shown as text.
+  const description = "Available in 48V, 60V and 72V configurations.\nShips worldwide.";
+  assert.equal(stripColorLines(description).trim(), description.trim());
 });

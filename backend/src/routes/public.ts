@@ -45,6 +45,27 @@ publicRouter.get("/testimonials", async (_req, res) => {
   );
 });
 
+/**
+ * Live announcements only: active, and inside their scheduled window. The
+ * window is evaluated here rather than in the browser so a scheduled notice
+ * cannot leak early to anyone reading the payload.
+ */
+publicRouter.get("/announcements", async (_req, res) => {
+  const now = new Date().toISOString();
+  const { data, error } = await db()
+    .from("announcements")
+    .select("id, message, href, starts_at, ends_at, position")
+    .eq("active", true)
+    .order("position", { ascending: true })
+    .limit(20);
+  if (error) return res.json([]); // Fail safe: the stripe is decoration.
+  res.json(
+    (data ?? [])
+      .filter((a) => (!a.starts_at || a.starts_at <= now) && (!a.ends_at || a.ends_at >= now))
+      .map((a) => ({ id: a.id, message: a.message, href: a.href ?? null, position: a.position })),
+  );
+});
+
 publicRouter.get("/settings", async (_req, res) => {
   const { data, error } = await db().from("site_settings").select("*").eq("id", 1).maybeSingle();
   if (error || !data) return res.status(500).json({ error: "Could not load settings" });
@@ -53,6 +74,8 @@ publicRouter.get("/settings", async (_req, res) => {
     announcements: data.announcements,
     contact: data.contact,
     social: data.social,
+    legalName: data.legal_name ?? "",
+    logoUrl: data.logo_url ?? null,
   });
 });
 

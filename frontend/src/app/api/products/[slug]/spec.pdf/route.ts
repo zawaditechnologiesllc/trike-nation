@@ -1,6 +1,6 @@
 import { fetchProduct, fetchSettings } from "@/lib/api";
 import { PdfDocument, PAGE, rgb } from "@shared/core/pdf";
-import { colorsFromDescription } from "@shared/core/colors";
+import { colorsFromDescription, stripColorLines } from "@shared/core/colors";
 import { deliveryWindowLabel } from "@shared/core/delivery";
 import { BRAND, EMAILS } from "@/lib/brand";
 
@@ -57,7 +57,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
   y = doc.ensureSpace(y, 60);
   y = doc.rule(y, RULE);
   y = doc.text("DESCRIPTION", y, { size: 9, bold: true, color: MUTED, leading: 16 });
-  y = doc.paragraph(product.description, y, { size: 10, color: INK });
+  // Colours get their own section below; leaving the raw line here would
+  // print it twice.
+  y = doc.paragraph(colors.length ? stripColorLines(product.description) : product.description, y, {
+    size: 10,
+    color: INK,
+  });
 
   // Specifications
   if (product.specs.length > 0) {

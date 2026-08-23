@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Anton, JetBrains_Mono, Manrope } from "next/font/google";
 import { CartProvider } from "@/lib/cart";
+import { WishlistProvider } from "@/lib/wishlist";
 import { AuthProvider } from "@/lib/auth";
-import { fetchCategories, fetchSettings } from "@/lib/api";
+import { fetchAnnouncements, fetchCategories, fetchSettings } from "@/lib/api";
 import { BRAND } from "@/lib/brand";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import AnnouncementStripe from "@/components/AnnouncementStripe";
 import JsonLd from "@/components/JsonLd";
 import PublicEnvScript from "@/components/PublicEnvScript";
 import { organizationJsonLd, websiteJsonLd } from "@shared/core/trust";
@@ -38,7 +40,16 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const [settings, categories] = await Promise.all([fetchSettings(), fetchCategories()]);
+  const [settings, categories, announcements] = await Promise.all([
+    fetchSettings(),
+    fetchCategories(),
+    fetchAnnouncements(),
+  ]);
+  // Admin-authored notices win; the seeded strings in settings are the
+  // fallback so the stripe is never empty on a fresh install.
+  const stripe = announcements.length
+    ? announcements
+    : settings.announcements.map((message) => ({ message }));
   const navCategories = categories.map((c) => ({ slug: c.slug, name: c.name }));
 
   // One identity, read by the footer and by the markup below. A value still
@@ -64,9 +75,12 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <JsonLd data={[organizationJsonLd(identity), websiteJsonLd(identity)]} />
         <AuthProvider>
           <CartProvider>
-            <Header announcements={settings.announcements} categories={navCategories} />
-            <main>{children}</main>
-            <Footer contact={settings.contact} social={settings.social} categories={navCategories} />
+            <WishlistProvider>
+              <AnnouncementStripe announcements={stripe} />
+              <Header categories={navCategories} />
+              <main>{children}</main>
+              <Footer contact={settings.contact} social={settings.social} categories={navCategories} />
+            </WishlistProvider>
           </CartProvider>
         </AuthProvider>
       </body>
