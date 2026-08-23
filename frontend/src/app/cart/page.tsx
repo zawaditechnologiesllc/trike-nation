@@ -29,7 +29,7 @@ export default function CartPage() {
         <div className="mt-12 space-y-4">
           {items.map((item) => (
             <div
-              key={item.slug}
+              key={item.key}
               className="flex flex-col gap-4 border border-steel bg-carbon p-4 sm:flex-row sm:items-center"
             >
               <Image src={item.image} alt={item.name} width={160} height={90} className="border border-steel" />
@@ -44,7 +44,7 @@ export default function CartPage() {
                   <button
                     aria-label="Decrease quantity"
                     className="px-3 py-2 text-chrome hover:text-ember"
-                    onClick={() => setQty(item.slug, item.qty - 1)}
+                    onClick={() => setQty(item.key, item.qty - 1)}
                   >
                     −
                   </button>
@@ -52,13 +52,13 @@ export default function CartPage() {
                   <button
                     aria-label="Increase quantity"
                     className="px-3 py-2 text-chrome hover:text-ember"
-                    onClick={() => setQty(item.slug, item.qty + 1)}
+                    onClick={() => setQty(item.key, item.qty + 1)}
                   >
                     +
                   </button>
                 </div>
                 <button
-                  onClick={() => remove(item.slug)}
+                  onClick={() => remove(item.key)}
                   className="label-caps text-silver hover:text-ember"
                   aria-label={`Remove ${item.name}`}
                 >

@@ -10,6 +10,8 @@ import Price from "@/components/Price";
 import SpecList from "@/components/SpecList";
 import Stars from "@/components/Stars";
 import ProductCard from "@/components/ProductCard";
+import SpecSheetLink from "@/components/SpecSheetLink";
+import { colorsFromDescription } from "@shared/core/colors";
 
 export const revalidate = 60;
 
@@ -31,6 +33,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     fetchCategories(),
   ]);
   const related = all.filter((p) => p.slug !== product.slug).slice(0, 4);
+
+  // Colours come from the column, falling back to the description for products
+  // uploaded before that column existed. The server applies the same fallback
+  // when an order arrives, so what the buyer sees is what gets validated.
+  const colors = product.colors?.length ? product.colors : colorsFromDescription(product.description);
+  const productWithColors = { ...product, colors };
   const category = categories.find((c) => c.slug === product.category);
   const savings =
     product.compareAtCents && product.compareAtCents > product.priceCents
@@ -102,7 +110,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
 
           <div className="mt-10">
-            <AddToCartButton product={product} withQty />
+            <AddToCartButton product={productWithColors} withQty withColors />
             <Link
               href="/contact"
               className="display mt-3 block border border-steel-light py-3 text-center text-sm text-chrome transition-colors hover:border-ember hover:text-ember"

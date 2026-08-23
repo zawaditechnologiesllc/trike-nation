@@ -11,7 +11,8 @@ import { trackingLink } from "../../shared/core/couriers";
  */
 
 const money = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-const ref = (orderId: string) => `#${orderId.slice(0, 8).toUpperCase()}`;
+const ref = (orderId: string, orderNumber?: string | null) =>
+  orderNumber?.trim() ? orderNumber.trim() : `#${orderId.slice(0, 8).toUpperCase()}`;
 
 export interface SendResult {
   ok: boolean;
@@ -124,18 +125,24 @@ const muted = (text: string) => `<p style="color:#8e8e93;font-size:12px;line-hei
 
 export interface OrderEmailData {
   id: string;
-  items: { name: string; qty: number; unitCents: number }[];
+  /** Human reference (GCG-2026-0148). Falls back to the short uuid. */
+  orderNumber?: string | null;
+  items: { name: string; qty: number; unitCents: number; color?: string | null }[];
   subtotalCents: number;
   discountCents: number;
   totalCents: number;
   discountCode?: string | null;
+  shippingCents?: number;
+  countryCode?: string | null;
 }
 
 function orderTable(order: OrderEmailData): string {
   const rows = order.items
     .map(
       (i) =>
-        `<tr><td style="padding:8px 0;border-bottom:1px solid #333">${escape(i.name)} × ${i.qty}</td>
+        `<tr><td style="padding:8px 0;border-bottom:1px solid #333">${escape(i.name)}${
+          i.color ? ` <span style="color:#8e8e93">(${escape(i.color)})</span>` : ""
+        } × ${i.qty}</td>
          <td style="padding:8px 0;border-bottom:1px solid #333;text-align:right">${money(i.unitCents * i.qty)}</td></tr>`,
     )
     .join("");
@@ -169,11 +176,11 @@ const deliveryWindow = (countryCode?: string | null) => deliveryWindowLabel(coun
 export function sendOrderReceived(to: string, order: OrderEmailData): Promise<SendResult> {
   return sendEmail(
     to,
-    `We've got your order — ${ref(order.id)}`,
+    `We've got your order — ${ref(order.id, order.orderNumber)}`,
     shell(
       "Order received",
       p(
-        `Thanks for the order. <strong>${ref(order.id)}</strong> is logged and your payment is being verified by our team — we confirm every payment by hand rather than trusting an automated flag, so this usually takes under one business day.`,
+        `Thanks for the order. <strong>${ref(order.id, order.orderNumber)}</strong> is logged and your payment is being verified by our team — we confirm every payment by hand rather than trusting an automated flag, so this usually takes under one business day.`,
       ) +
         p("You'll get another email the moment it's confirmed, and again at every step after that.") +
         orderTable(order) +
@@ -201,11 +208,11 @@ export function sendPaymentConfirmed(
 
   return sendEmail(
     to,
-    `Payment confirmed — ${ref(order.id)}`,
+    `Payment confirmed — ${ref(order.id, order.orderNumber)}`,
     shell(
       "Payment confirmed",
       p(
-        `Payment for <strong>${ref(order.id)}</strong> is confirmed and your machine is in the build queue. Expect delivery in <strong>${deliveryWindow()}</strong>.`,
+        `Payment for <strong>${ref(order.id, order.orderNumber)}</strong> is confirmed and your machine is in the build queue. Expect delivery in <strong>${deliveryWindow()}</strong>.`,
       ) +
         p(
           `We'll email you progress updates on day ${env.deliveryUpdateDays.join(", day ")} — and immediately whenever the status changes.`,
@@ -484,10 +491,10 @@ export function sendAdminNewOrder(order: OrderEmailData & { email: string }): Pr
   }
   return sendEmail(
     env.adminEmail,
-    `Order awaiting confirmation — ${ref(order.id)} (${money(order.totalCents)})`,
+    `Order awaiting confirmation — ${ref(order.id, order.orderNumber)} (${money(order.totalCents)})`,
     shell(
       "New order to confirm",
-      p(`<strong>${escape(order.email)}</strong> placed order <strong>${ref(order.id)}</strong>.`) +
+      p(`<strong>${escape(order.email)}</strong> placed order <strong>${ref(order.id, order.orderNumber)}</strong>.`) +
         orderTable(order) +
         button(`${env.frontendUrl}/admin/orders/${order.id}`, "Review and confirm") +
         muted("Payments are confirmed manually — the customer is waiting on this."),

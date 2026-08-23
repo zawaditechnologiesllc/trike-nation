@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS } from "./defaults";
+import type { AddressInput, FieldError } from "@shared/core/validation";
 import type {
   AccountOrder,
   CartItem,
@@ -6,7 +7,6 @@ import type {
   OrderSummary,
   PaymentsConfig,
   Product,
-  ShippingInfo,
   SiteSettings,
   Testimonial,
 } from "./types";
@@ -47,7 +47,17 @@ async function apiSend<T>(path: string, body: unknown, init?: { accessToken?: st
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { error?: string }).error ?? `Request failed (${res.status})`);
+  if (!res.ok) {
+    const body = data as { error?: string; fieldErrors?: FieldError[] };
+    const error = new Error(body.error ?? `Request failed (${res.status})`) as Error & {
+      fieldErrors?: FieldError[];
+    };
+    // Field-level errors travel with the exception so the form can highlight
+    // the offending input rather than printing a sentence above eight
+    // identical boxes.
+    error.fieldErrors = body.fieldErrors;
+    throw error;
+  }
   return data as T;
 }
 
@@ -131,17 +141,21 @@ export async function sendContactMessage(input: {
  */
 export async function placeOrder(input: {
   items: CartItem[];
-  shipping: ShippingInfo;
+  shipping: AddressInput;
   discountCode?: string;
   accessToken?: string;
-}): Promise<OrderSummary> {
+}): Promise<OrderSummary & { fieldErrors?: FieldError[] }> {
   return apiSend<OrderSummary>(
     "/api/orders",
     {
-      items: input.items.map((i) => ({ slug: i.slug, qty: i.qty })),
+      // The client sends ids, quantities and colours — nothing about money.
+      items: input.items.map((i) => ({ slug: i.slug, qty: i.qty, color: i.color ?? null })),
       shipping: input.shipping,
       provider: "stripe",
       discountCode: input.discountCode,
+      // The browser's own timezone. Paired with the CDN's country this is the
+      // useful fraud signal: a VPN moves the address but not the clock.
+      timezone: typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined,
     },
     { accessToken: input.accessToken },
   );

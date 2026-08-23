@@ -7,6 +7,10 @@ import { lookupDiscount } from "./public";
 import { createStripeCheckout, stripe, stripeEnabled } from "../payments/stripe";
 import { sendAdminNewOrder, sendOrderReceived, type OrderEmailData } from "../email";
 import { claimOrdersForUser, getOrder, recordEvent, syncStripeSession } from "../orders/service";
+import { readOrigin, originColumns } from "../orders/origin";
+import { parseColors, resolveColor, type ProductColor } from "../../../shared/core/colors";
+import { deliveryWindow, estimatedDeliveryAt } from "../../../shared/core/delivery";
+import { normaliseAddress, validateAddress } from "../../../shared/core/validation";
 
 export const ordersRouter = Router();
 
@@ -33,57 +37,92 @@ interface OrderItemInput {
   qty: number;
 }
 
-const SHIPPING_FIELDS = ["firstName", "lastName", "address", "city", "zip", "phone", "email"] as const;
+interface OrderLineInput {
+  slug: string;
+  qty: number;
+  /** Chosen colour. Absent means "the default" — never a rejection. */
+  color?: string | null;
+}
 
 ordersRouter.post("/orders", requireDb, async (req, res) => {
-  const items = (req.body?.items ?? []) as OrderItemInput[];
-  const shipping = req.body?.shipping ?? {};
+  const items = (req.body?.items ?? []) as OrderLineInput[];
   const discountCode = req.body?.discountCode ? String(req.body.discountCode).toUpperCase() : undefined;
 
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: "Cart is empty" });
   }
-  for (const field of SHIPPING_FIELDS) {
-    if (!String(shipping[field] ?? "").trim()) {
-      return res.status(400).json({ error: `Missing shipping field: ${field}` });
-    }
-  }
-  const email = String(shipping.email).trim().toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    return res.status(400).json({ error: "A valid email address is required" });
+
+  // ONE validation module, shared with the browser form. The browser check is
+  // a courtesy; this one decides. Errors name the field so the form can
+  // highlight it.
+  const shipping = normaliseAddress(req.body?.shipping ?? {});
+  const addressErrors = validateAddress(shipping);
+  if (addressErrors.length > 0) {
+    return res.status(400).json({
+      error: addressErrors[0].message,
+      fieldErrors: addressErrors,
+    });
   }
   if (!stripe) return res.status(503).json({ error: "Card payment is not configured" });
 
   const user = await getUserFromRequest(req);
 
-  // Price everything server-side; never trust client totals.
+  // Price everything server-side; the client sends ids, quantities and
+  // colours, and nothing else about money.
   const priced: PricedItem[] = [];
   for (const item of items) {
     const { data } = await db()
       .from("products")
-      .select("id, name, price_cents, in_stock")
+      .select("id, name, price_cents, in_stock, status, colors, description, image")
       .eq("slug", item.slug)
       .maybeSingle();
     if (!data) return res.status(400).json({ error: `Unknown product: ${item.slug}` });
+    if (data.status === "archived" || data.status === "draft") {
+      return res.status(409).json({ error: `${data.name} is no longer available` });
+    }
     if (!data.in_stock) return res.status(409).json({ error: `${data.name} is out of stock` });
+
+    // Colours come from the column, falling back to the description for
+    // products uploaded before that column existed.
+    const colors: ProductColor[] = Array.isArray(data.colors) && data.colors.length
+      ? (data.colors as ProductColor[])
+      : parseColors(data.description);
+
+    let color: string | null;
+    try {
+      // Applies the default when the line has none (a stale cart, a
+      // non-browser request), and REFUSES a colour the product does not come
+      // in — quietly substituting one would put a colour on the order the
+      // buyer explicitly did not ask for.
+      color = resolveColor(colors, item.color);
+    } catch (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid colour" });
+    }
+
     priced.push({
       productId: data.id,
       slug: item.slug,
       name: data.name,
       unitCents: data.price_cents,
       qty: clampQty(item.qty),
+      color,
+      imageUrl: data.image ?? null,
     });
   }
 
   const percentOff = discountCode ? ((await lookupDiscount(discountCode)) ?? 0) : 0;
   const pricing = computePricing(priced, percentOff);
 
+  // What the CDN already knows plus the browser's own timezone. Advisory
+  // only — never used to refuse an order, and no IP address is stored.
+  const origin = readOrigin(req, req.body?.timezone);
+
   const { data: order, error: orderError } = await db()
     .from("orders")
     .insert({
       user_id: user?.id ?? null,
-      email,
-      shipping: { ...shipping, email },
+      email: shipping.email,
+      shipping,
       subtotal_cents: pricing.subtotalCents,
       discount_cents: pricing.discountCents,
       total_cents: pricing.totalCents,
@@ -92,8 +131,9 @@ ordersRouter.post("/orders", requireDb, async (req, res) => {
       payment_status: "unpaid",
       payment_provider: "stripe",
       currency: env.stripeCurrency,
+      ...originColumns(origin, shipping.country),
     })
-    .select("id")
+    .select("id, order_number")
     .single();
   if (orderError || !order) {
     console.error("order insert failed", orderError);
@@ -110,6 +150,10 @@ ordersRouter.post("/orders", requireDb, async (req, res) => {
         product_name: p.name,
         unit_price_cents: p.unitCents,
         qty: p.qty,
+        // Colour is part of the line identity and must reach every email and
+        // the PDF, not just the cart.
+        color: p.color ?? null,
+        image_url: p.imageUrl ?? null,
       })),
     );
   if (itemsError) {
@@ -121,11 +165,19 @@ ordersRouter.post("/orders", requireDb, async (req, res) => {
   try {
     const checkout = await createStripeCheckout({
       orderId: order.id,
-      email,
+      email: shipping.email,
       items: priced,
       discountCents: pricing.discountCents,
       discountCode,
-      shipping: { ...shipping, email },
+      shipping: {
+        firstName: shipping.firstName,
+        lastName: shipping.lastName,
+        address: shipping.address,
+        city: shipping.city,
+        zip: shipping.postalCode,
+        phone: shipping.phone,
+        email: shipping.email,
+      },
     });
     await db()
       .from("orders")
@@ -140,27 +192,31 @@ ordersRouter.post("/orders", requireDb, async (req, res) => {
       metadata: { stripe_session_id: checkout.sessionId },
     });
 
-    // Receipt-of-order email now; the payment-confirmed email comes later,
-    // from an admin approving it.
     const emailData: OrderEmailData = {
       id: order.id,
-      items: priced.map((p) => ({ name: p.name, qty: p.qty, unitCents: p.unitCents })),
+      items: priced.map((p) => ({ name: p.name, qty: p.qty, unitCents: p.unitCents, color: p.color })),
       subtotalCents: pricing.subtotalCents,
       discountCents: pricing.discountCents,
       totalCents: pricing.totalCents,
       discountCode: pricing.percentOff ? discountCode : null,
+      orderNumber: order.order_number as string | null,
     };
-    void sendOrderReceived(email, emailData);
-    void sendAdminNewOrder({ ...emailData, email });
+    // NOT a confirmation — the payment has not happened yet. The receipt is
+    // sent when an admin confirms it.
+    void sendOrderReceived(shipping.email, emailData);
+    void sendAdminNewOrder({ ...emailData, email: shipping.email });
 
     res.json({
       id: order.id,
+      orderNumber: order.order_number,
       status: "pending_payment",
       paymentStatus: "unpaid",
       subtotalCents: pricing.subtotalCents,
       discountCents: pricing.discountCents,
       totalCents: pricing.totalCents,
       discountCode: pricing.percentOff ? discountCode : undefined,
+      deliveryWindow: deliveryWindow(shipping.country),
+      estimatedDeliveryAt: estimatedDeliveryAt(new Date(), shipping.country).toISOString(),
       redirectUrl: checkout.redirectUrl,
     });
   } catch (err) {

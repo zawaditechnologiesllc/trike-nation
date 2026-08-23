@@ -4,6 +4,9 @@ export interface PricedItem {
   name: string;
   unitCents: number;
   qty: number;
+  /** Part of the line identity: the same product in two colours is two lines. */
+  color?: string | null;
+  imageUrl?: string | null;
 }
 
 export interface OrderPricing {

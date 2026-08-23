@@ -12,10 +12,20 @@ export interface ProductFeature {
   text: string;
 }
 
+export interface ProductColorOption {
+  name: string;
+  hex: string | null;
+}
+
 export interface Product {
   id?: string;
   slug: string;
   name: string;
+  tagline?: string;
+  colors?: ProductColorOption[];
+  status?: "draft" | "active" | "archived";
+  isNew?: boolean;
+  badge?: string | null;
   category: string; // category slug
   priceCents: number;
   compareAtCents?: number;
@@ -40,10 +50,13 @@ export interface Testimonial {
 }
 
 export interface CartItem {
+  /** slug::colour — the line identity, so two colours are two lines. */
+  key: string;
   slug: string;
   name: string;
   priceCents: number;
   image: string;
+  color?: string | null;
   qty: number;
 }
 
