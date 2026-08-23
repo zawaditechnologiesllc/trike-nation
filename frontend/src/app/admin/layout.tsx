@@ -11,13 +11,15 @@ const NAV: { href: string; label: string; exact?: boolean; except?: string[] }[]
   { href: "/admin/orders/paid", label: "Paid Orders", exact: true },
   // Paid Orders lives under /admin/orders, so exclude it from the prefix match.
   { href: "/admin/orders", label: "All Orders", except: ["/admin/orders/paid"] },
-  { href: "/admin/products", label: "Products" },
+  { href: "/admin/products", label: "Products", except: ["/admin/products/new"] },
+  { href: "/admin/import", label: "Bulk Import" },
   { href: "/admin/categories", label: "Categories" },
   { href: "/admin/discounts", label: "Discounts" },
   { href: "/admin/customers", label: "Customers" },
   { href: "/admin/subscribers", label: "Subscribers" },
   { href: "/admin/messages", label: "Messages" },
   { href: "/admin/testimonials", label: "Testimonials" },
+  { href: "/admin/announcements", label: "Announcements" },
   { href: "/admin/settings", label: "Site Settings" },
   { href: "/admin/system", label: "System" },
 ];

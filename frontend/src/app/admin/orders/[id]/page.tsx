@@ -11,6 +11,8 @@ import {
   type AdminOrderDetail,
 } from "@/lib/admin";
 import { money } from "@/lib/format";
+import TrackingFields from "@/components/admin/TrackingFields";
+import RiskPanel from "@/components/admin/RiskPanel";
 
 export default function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -18,6 +20,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [tracking, setTracking] = useState("");
+  const [courier, setCourier] = useState("");
   const [notes, setNotes] = useState("");
   const [customerNote, setCustomerNote] = useState("");
   const [notify, setNotify] = useState(true);
@@ -65,6 +68,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
           body: JSON.stringify({
             status,
             trackingNumber: tracking,
+            courier,
             adminNotes: notes,
             customerNote: customerNote || undefined,
             notify,
@@ -333,6 +337,8 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
             </p>
           </div>
 
+          <RiskPanel order={order} />
+
           <div className="border border-steel bg-carbon p-6">
             <h2 className="display text-xl">Timeline</h2>
             <p className="mt-1 font-mono text-xs text-silver">
@@ -382,15 +388,12 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
               {STATUS_HELP[status]}
             </span>
           </label>
-          <label className="block">
-            <span className="label-caps text-silver">Tracking Number</span>
-            <input
-              className="input-tech mt-2"
-              placeholder="Carrier tracking #"
-              value={tracking}
-              onChange={(e) => setTracking(e.target.value)}
-            />
-          </label>
+          <TrackingFields
+            courier={courier}
+            tracking={tracking}
+            onCourierChange={setCourier}
+            onTrackingChange={setTracking}
+          />
           <label className="block">
             <span className="label-caps text-silver">Note to the customer</span>
             <textarea

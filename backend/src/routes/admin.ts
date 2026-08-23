@@ -6,6 +6,16 @@ import { resendHealth, sendOrderStatusChanged, sendDeliveryUpdate } from "../ema
 import { refundPayment, stripeAccountSnapshot, stripeEnabled, stripeLiveMode } from "../payments/stripe";
 import { claimStage, markClaimResult } from "../orders/events";
 import { STAGES, stageDefinition } from "../../../shared/core/stages";
+import { parseProductSheet } from "../../../shared/core/product-sheet";
+import { probeLogoBytes, probeLogoUrl } from "../../../shared/core/image-probe";
+import { parseColors } from "../../../shared/core/colors";
+import { couriersByRegion, generateInternalReference, trackingLink } from "../../../shared/core/couriers";
+import {
+  NEVER_BUILD,
+  WHAT_ACTUALLY_HELPS,
+  organizationJsonLd,
+  trustChecklist,
+} from "../../../shared/core/trust";
 import {
   ORDER_STATUSES,
   PAID_STATUSES,
@@ -72,7 +82,7 @@ adminRouter.get("/stats", async (_req, res) => {
 
 // Kept as one literal so supabase-js can type the rows (see orders/service.ts).
 const ORDER_LIST_FIELDS =
-  "id, email, status, payment_status, payment_provider, total_cents, discount_code, tracking_number, created_at, paid_at, shipped_at, delivered_at, user_id, stripe_reported_status, stripe_amount_total_cents, account_invite_sent_at";
+  "id, email, status, payment_status, payment_provider, total_cents, discount_code, tracking_number, created_at, paid_at, shipped_at, delivered_at, user_id, stripe_reported_status, stripe_amount_total_cents, account_invite_sent_at, origin_country, risk_level, fulfillment_stage, courier";
 
 adminRouter.get("/orders", async (req, res) => {
   const status = req.query.status as string | undefined;
@@ -159,6 +169,7 @@ adminRouter.get("/orders/:id", async (req, res) => {
 adminRouter.patch("/orders/:id", async (req, res) => {
   const status = req.body?.status as string | undefined;
   const trackingNumber = req.body?.trackingNumber as string | undefined;
+  const courier = req.body?.courier as string | undefined;
   const adminNotes = req.body?.adminNotes as string | undefined;
   const customerNote = req.body?.customerNote as string | undefined;
   const notify = req.body?.notify !== false;
@@ -171,12 +182,12 @@ adminRouter.patch("/orders/:id", async (req, res) => {
   if (!existing) return res.status(404).json({ error: "Order not found" });
 
   // Internal notes are admin-only and never emailed.
-  if (adminNotes !== undefined) {
-    const { error } = await db()
-      .from("orders")
-      .update({ admin_notes: adminNotes || null })
-      .eq("id", req.params.id);
-    if (error) return res.status(500).json({ error: "Could not save notes" });
+  if (adminNotes !== undefined || courier !== undefined) {
+    const patch: Record<string, unknown> = {};
+    if (adminNotes !== undefined) patch.admin_notes = adminNotes || null;
+    if (courier !== undefined) patch.courier = courier || null;
+    const { error } = await db().from("orders").update(patch).eq("id", req.params.id);
+    if (error) return res.status(500).json({ error: "Could not save order details" });
   }
 
   if (status === undefined) {
@@ -432,6 +443,16 @@ adminRouter.post("/uploads", async (req, res) => {
   const buffer = Buffer.from(dataBase64, "base64");
   if (buffer.length > 5 * 1024 * 1024) return res.status(413).json({ error: "Max image size is 5MB" });
 
+  // A logo is refused HERE if the PDF writer cannot decode it, using the
+  // writer's own decoder. Accepting it now and failing silently in the spec
+  // sheet later is the failure this whole probe exists to prevent.
+  if (req.body?.purpose === "logo") {
+    const probe = probeLogoBytes(new Uint8Array(buffer));
+    if (probe.status !== "ok") {
+      return res.status(400).json({ error: probe.message, probe });
+    }
+  }
+
   const ext = filename.includes(".") ? filename.split(".").pop() : "png";
   // The timestamped path makes every upload a new URL, so the object is
   // immutable and safe to cache at the edge for a full year.
@@ -589,19 +610,81 @@ adminRouter.delete("/testimonials/:id", async (req, res) => {
 adminRouter.get("/settings", async (_req, res) => {
   const { data } = await db().from("site_settings").select("*").eq("id", 1).maybeSingle();
   if (!data) return res.status(404).json({ error: "Settings row missing — run supabase/seed.sql" });
-  res.json({ hero: data.hero, announcements: data.announcements, contact: data.contact, social: data.social });
+  res.json({
+    hero: data.hero,
+    announcements: data.announcements,
+    contact: data.contact,
+    social: data.social,
+    legalName: data.legal_name ?? "",
+    logoUrl: data.logo_url ?? null,
+    defaultShippingCents: data.default_shipping_cents ?? 0,
+    taxRateBps: data.tax_rate_bps ?? 0,
+    freeShipping: data.free_shipping ?? true,
+  });
 });
 
+/**
+ * Saves settings and NAMES WHAT CHANGED.
+ *
+ * A save that reports "no changes" over a write that succeeded is
+ * indistinguishable from a broken button, so this compares against the stored
+ * row rather than trusting the request.
+ */
 adminRouter.put("/settings", async (req, res) => {
-  const { hero, announcements, contact, social } = req.body ?? {};
-  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (hero && typeof hero === "object") patch.hero = hero;
-  if (Array.isArray(announcements)) patch.announcements = announcements.filter((a) => typeof a === "string" && a.trim());
-  if (contact && typeof contact === "object") patch.contact = contact;
-  if (social && typeof social === "object") patch.social = social;
+  const { data: current } = await db().from("site_settings").select("*").eq("id", 1).maybeSingle();
+  if (!current) return res.status(404).json({ error: "Settings row missing — run supabase/seed.sql" });
+
+  const body = req.body ?? {};
+  const patch: Record<string, unknown> = {};
+  const changed: string[] = [];
+
+  const setIfDifferent = (column: string, label: string, value: unknown) => {
+    if (value === undefined) return;
+    if (JSON.stringify(current[column]) === JSON.stringify(value)) return;
+    patch[column] = value;
+    changed.push(label);
+  };
+
+  if (body.hero && typeof body.hero === "object") setIfDifferent("hero", "hero", body.hero);
+  if (Array.isArray(body.announcements)) {
+    setIfDifferent(
+      "announcements",
+      "announcement ticker",
+      body.announcements.filter((a: unknown) => typeof a === "string" && a.trim()),
+    );
+  }
+  if (body.contact && typeof body.contact === "object") setIfDifferent("contact", "contact details", body.contact);
+  if (body.social && typeof body.social === "object") setIfDifferent("social", "social links", body.social);
+  if (typeof body.legalName === "string") setIfDifferent("legal_name", "legal name", body.legalName.trim());
+  if (body.logoUrl !== undefined) setIfDifferent("logo_url", "logo", body.logoUrl || null);
+  if (body.defaultShippingCents !== undefined) {
+    setIfDifferent("default_shipping_cents", "shipping fee", Math.max(0, Math.round(Number(body.defaultShippingCents) || 0)));
+  }
+  if (body.taxRateBps !== undefined) {
+    setIfDifferent("tax_rate_bps", "tax rate", Math.max(0, Math.min(10000, Math.round(Number(body.taxRateBps) || 0))));
+  }
+  if (typeof body.freeShipping === "boolean") setIfDifferent("free_shipping", "free shipping", body.freeShipping);
+
+  if (changed.length === 0) {
+    return res.json({ ok: true, changed: [], message: "Nothing was different, so nothing was saved." });
+  }
+
+  patch.updated_at = new Date().toISOString();
   const { error } = await db().from("site_settings").update(patch).eq("id", 1);
   if (error) return res.status(500).json({ error: "Could not save settings" });
-  res.json({ ok: true });
+  res.json({ ok: true, changed, message: `Saved: ${changed.join(", ")}.` });
+});
+
+/**
+ * Probes the CURRENTLY STORED logo with the PDF writer's own decoder.
+ *
+ * An admin who uploads a logo, sees it in the browser preview and finds it
+ * missing from the spec sheet cannot otherwise tell whether the upload, the
+ * save, or the file is at fault — three different fixes, one silence.
+ */
+adminRouter.get("/settings/logo-probe", async (_req, res) => {
+  const { data } = await db().from("site_settings").select("logo_url").eq("id", 1).maybeSingle();
+  res.json(await probeLogoUrl(data?.logo_url));
 });
 
 // ---------------------------------------------------------------------------
@@ -839,4 +922,248 @@ adminRouter.post("/system/run-delivery-cron", async (_req, res) => {
     console.error("manual delivery sweep failed", err);
     res.status(500).json({ error: "Sweep failed" });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Bulk import, colour backfill, announcements, and the trust checklist
+// ---------------------------------------------------------------------------
+
+/**
+ * Import products from a plain-text sheet.
+ *
+ * Reports what it DID — created, updated, skipped and why — because a bulk
+ * action that returns "ok" is indistinguishable from one that silently
+ * imported nothing.
+ */
+adminRouter.post("/products/import", async (req, res) => {
+  const sheet = String(req.body?.sheet ?? "");
+  const dryRun = req.body?.dryRun === true;
+  if (!sheet.trim()) return res.status(400).json({ error: "Paste a product sheet first." });
+
+  const { products, rejected } = parseProductSheet(sheet);
+  if (products.length === 0) {
+    return res.status(400).json({
+      error: "Nothing in that sheet could be imported.",
+      rejected,
+    });
+  }
+
+  const created: string[] = [];
+  const updated: string[] = [];
+  const failed: { slug: string; reason: string }[] = [];
+
+  for (const product of products) {
+    const row = {
+      slug: product.slug,
+      name: product.name,
+      tagline: product.tagline,
+      category_slug: product.category || "spare-parts",
+      price_cents: product.priceCents,
+      compare_at_cents: product.compareAtCents,
+      description: product.description,
+      engine_size: product.engineSize,
+      colors: product.colors,
+      specs: product.specs,
+      box_contents: product.boxContents,
+      badge: product.badge,
+      in_stock: product.inStock,
+      status: "active",
+      updated_at: new Date().toISOString(),
+    };
+
+    if (dryRun) {
+      created.push(product.slug);
+      continue;
+    }
+
+    const { data: existing } = await db()
+      .from("products")
+      .select("id")
+      .eq("slug", product.slug)
+      .maybeSingle();
+
+    if (existing) {
+      // Never overwrite a colour list an admin edited by hand.
+      const { data: current } = await db()
+        .from("products")
+        .select("colors_edited")
+        .eq("id", existing.id)
+        .maybeSingle();
+      const patch = current?.colors_edited ? { ...row, colors: undefined } : row;
+      const { error } = await db().from("products").update(patch).eq("id", existing.id);
+      if (error) failed.push({ slug: product.slug, reason: error.message });
+      else updated.push(product.slug);
+    } else {
+      const { error } = await db().from("products").insert(row);
+      if (error) failed.push({ slug: product.slug, reason: error.message });
+      else created.push(product.slug);
+    }
+  }
+
+  res.json({
+    ok: failed.length === 0,
+    dryRun,
+    created,
+    updated,
+    failed,
+    rejected,
+    warnings: products.flatMap((p) => p.warnings.map((w) => `${p.name}: ${w}`)),
+    summary: dryRun
+      ? `${products.length} product${products.length === 1 ? "" : "s"} would import. Nothing was saved.`
+      : `Created ${created.length}, updated ${updated.length}` +
+        (failed.length ? `, ${failed.length} failed` : "") +
+        (rejected.length ? `, ${rejected.length} block${rejected.length === 1 ? "" : "s"} skipped` : "") +
+        ".",
+  });
+});
+
+/**
+ * Reads colours out of every product description that has none.
+ *
+ * Pages through the WHOLE catalogue — a single page of 50 silently leaves the
+ * rest without swatches — and reports which products still have none, so the
+ * admin knows what to fix by hand rather than assuming it worked.
+ */
+adminRouter.post("/products/backfill-colors", async (_req, res) => {
+  const pageSize = 100;
+  let from = 0;
+  const filled: string[] = [];
+  const stillEmpty: string[] = [];
+  let scanned = 0;
+
+  for (;;) {
+    const { data, error } = await db()
+      .from("products")
+      .select("id, slug, name, colors, colors_edited, description")
+      .order("created_at", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) return res.status(500).json({ error: "Could not read the catalogue" });
+    const rows = data ?? [];
+    if (rows.length === 0) break;
+
+    for (const row of rows) {
+      scanned += 1;
+      const existing = Array.isArray(row.colors) ? row.colors : [];
+      // Never overwrite a list edited by hand.
+      if (row.colors_edited || existing.length > 0) continue;
+
+      const parsed = parseColors(row.description);
+      if (parsed.length === 0) {
+        stillEmpty.push(row.name as string);
+        continue;
+      }
+      const { error: updateError } = await db()
+        .from("products")
+        .update({ colors: parsed })
+        .eq("id", row.id);
+      if (!updateError) filled.push(row.name as string);
+    }
+
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+
+  res.json({
+    ok: true,
+    scanned,
+    filled,
+    stillEmpty,
+    summary:
+      `Scanned ${scanned} product${scanned === 1 ? "" : "s"}. ` +
+      `Filled ${filled.length}. ` +
+      (stillEmpty.length
+        ? `${stillEmpty.length} still have no colours — add a "Colors:" line to their description or set them by hand.`
+        : "Every product now has colours."),
+  });
+});
+
+// --- Announcements ---------------------------------------------------------
+
+adminRouter.get("/announcements", async (_req, res) => {
+  const { data } = await db().from("announcements").select("*").order("position", { ascending: true });
+  res.json(data ?? []);
+});
+
+adminRouter.post("/announcements", async (req, res) => {
+  const message = String(req.body?.message ?? "").trim();
+  if (!message) return res.status(400).json({ error: "A message is required." });
+  const { error } = await db()
+    .from("announcements")
+    .insert({
+      message,
+      href: req.body?.href ? String(req.body.href) : null,
+      active: req.body?.active !== false,
+      starts_at: req.body?.startsAt || null,
+      ends_at: req.body?.endsAt || null,
+      position: Number(req.body?.position) || 0,
+    });
+  if (error) return res.status(500).json({ error: "Could not create the announcement" });
+  res.status(201).json({ ok: true, message: `Added "${message.slice(0, 40)}".` });
+});
+
+adminRouter.patch("/announcements/:id", async (req, res) => {
+  const patch: Record<string, unknown> = {};
+  if (typeof req.body?.message === "string") patch.message = req.body.message.trim();
+  if (req.body?.href !== undefined) patch.href = req.body.href || null;
+  if (typeof req.body?.active === "boolean") patch.active = req.body.active;
+  if (req.body?.startsAt !== undefined) patch.starts_at = req.body.startsAt || null;
+  if (req.body?.endsAt !== undefined) patch.ends_at = req.body.endsAt || null;
+  if (req.body?.position !== undefined) patch.position = Number(req.body.position) || 0;
+  if (Object.keys(patch).length === 0) return res.json({ ok: true, message: "Nothing to change." });
+
+  const { error } = await db().from("announcements").update(patch).eq("id", req.params.id);
+  if (error) return res.status(500).json({ error: "Could not update the announcement" });
+  res.json({ ok: true, message: `Updated ${Object.keys(patch).join(", ")}.` });
+});
+
+adminRouter.delete("/announcements/:id", async (req, res) => {
+  const { error } = await db().from("announcements").delete().eq("id", req.params.id);
+  if (error) return res.status(500).json({ error: "Could not delete the announcement" });
+  res.json({ ok: true, message: "Deleted." });
+});
+
+// --- Couriers and tracking -------------------------------------------------
+
+/** The grouped dropdown, plus a generated reference on request. */
+adminRouter.get("/couriers", (_req, res) => {
+  res.json({ groups: couriersByRegion() });
+});
+
+adminRouter.post("/tracking/generate", (_req, res) => {
+  const reference = generateInternalReference();
+  res.json({
+    reference,
+    // Told up front, so nobody wonders later why it is not a link.
+    note: "This is an internal reference. It is shown to the customer as plain text, never as a link — a link to a carrier that has never heard of it reads as 'nothing shipped'.",
+  });
+});
+
+/** What the customer will actually see, before the admin saves. */
+adminRouter.post("/tracking/preview", (req, res) => {
+  const state = trackingLink(req.body?.courier, req.body?.trackingNumber);
+  res.json({ willLink: Boolean(state.url), url: state.url, explanation: state.explanation });
+});
+
+// --- Trust checklist -------------------------------------------------------
+
+adminRouter.get("/trust", async (_req, res) => {
+  const { data } = await db().from("site_settings").select("*").eq("id", 1).maybeSingle();
+  const contact = (data?.contact ?? {}) as Record<string, string>;
+  const identity = {
+    name: env.brandName,
+    legalName: data?.legal_name ?? "",
+    url: env.frontendUrl,
+    logoUrl: data?.logo_url ?? null,
+    description: `${env.brandName} — direct-to-consumer mini trikes, drift karts, mini bikes and quads.`,
+    email: contact.email ?? env.supportEmail,
+    phone: contact.phone ?? "",
+    address: contact.address ?? "",
+    social: (data?.social ?? {}) as Record<string, string>,
+  };
+  res.json({
+    issues: trustChecklist(identity),
+    neverBuild: NEVER_BUILD,
+    whatHelps: WHAT_ACTUALLY_HELPS,
+    published: organizationJsonLd(identity),
+  });
 });

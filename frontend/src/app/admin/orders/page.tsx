@@ -70,7 +70,7 @@ function OrdersContent() {
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="bg-coal">
               <tr>
-                {["Order", "Date", "Customer", "Account", "Payment", "Status", "Total", ""].map((h) => (
+                {["Order", "Date", "Customer", "From", "Account", "Payment", "Status", "Total", ""].map((h) => (
                   <th key={h} className="label-caps px-4 py-3 text-silver">
                     {h}
                   </th>
@@ -85,6 +85,14 @@ function OrdersContent() {
                     {new Date(o.created_at).toLocaleDateString("en-US", { dateStyle: "medium" })}
                   </td>
                   <td className="px-4 py-3 text-chrome">{o.email}</td>
+                  <td className="label-caps px-4 py-3">
+                    <span className="text-silver">{o.origin_country ?? "—"}</span>
+                    {/* Badged only when something is worth a look, so the
+                        badge keeps meaning something. */}
+                    {(o.risk_level === "review" || o.risk_level === "high") && (
+                      <span className={`ml-2 ${o.risk_level === "high" ? "text-ember" : "text-amber"}`}>●</span>
+                    )}
+                  </td>
                   <td className="label-caps px-4 py-3">
                     {o.user_id ? (
                       <span className="text-success">linked</span>

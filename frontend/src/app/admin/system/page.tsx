@@ -3,6 +3,25 @@
 import { useCallback, useEffect, useState } from "react";
 import { adminFetch, serviceTone, type AdminSystemReport } from "@/lib/admin";
 
+interface TrustIssue {
+  field: string;
+  severity: "high" | "medium" | "low";
+  detail: string;
+  whyItMatters: string;
+}
+interface TrustReport {
+  issues: TrustIssue[];
+  neverBuild: string[];
+  whatHelps: string[];
+}
+interface LogoProbe {
+  status: "ok" | "not_saved" | "unreachable" | "unusable";
+  message: string;
+  format?: string;
+  width?: number;
+  height?: number;
+}
+
 const STATUS_LABEL: Record<string, string> = {
   ok: "Operational",
   degraded: "Needs attention",
@@ -23,12 +42,17 @@ export default function SystemPage() {
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [cronMsg, setCronMsg] = useState("");
+  const [trust, setTrust] = useState<TrustReport | null>(null);
+  const [logo, setLogo] = useState<LogoProbe | null>(null);
 
   const load = useCallback(async () => {
     setRefreshing(true);
     setError("");
     try {
       setReport(await adminFetch<AdminSystemReport>("/system"));
+      // Both fail soft: a missing trust report must not blank the page.
+      void adminFetch<TrustReport>("/trust").then(setTrust).catch(() => setTrust(null));
+      void adminFetch<LogoProbe>("/settings/logo-probe").then(setLogo).catch(() => setLogo(null));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load system status");
     } finally {
@@ -188,6 +212,84 @@ export default function SystemPage() {
           ))}
         </dl>
       </div>
+
+      {/* Trust checklist — what is still a placeholder, and why it costs. */}
+      {trust && (
+        <>
+          <h2 className="display mt-12 text-2xl">Trust checklist</h2>
+          <p className="mt-1 font-mono text-xs text-on-surface-muted">
+            A new domain scores badly on trust checkers, and the fix is real signals rather than
+            clever ones. Anything below is currently omitted from the site&apos;s structured data —
+            a fictional detail a checker follows and cannot find scores lower than nothing at all.
+          </p>
+
+          {trust.issues.length === 0 ? (
+            <p className="mt-4 border border-signal-positive/40 bg-signal-positive/5 p-4 font-mono text-sm text-signal-positive">
+              Nothing is a placeholder. Every detail is being published.
+            </p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {trust.issues.map((issue) => (
+                <div key={issue.field} className="border border-outline bg-surface-container p-5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="label-caps text-on-surface">{issue.field}</p>
+                    <span
+                      className={`label-caps ${
+                        issue.severity === "high"
+                          ? "text-error"
+                          : issue.severity === "medium"
+                            ? "text-signal-orange"
+                            : "text-on-surface-muted"
+                      }`}
+                    >
+                      {issue.severity}
+                    </span>
+                  </div>
+                  <p className="mt-2 font-mono text-xs text-on-surface-muted">{issue.detail}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">{issue.whyItMatters}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="border border-error/40 bg-error/5 p-5">
+              <p className="label-caps text-error">Never build these</p>
+              <ul className="mt-3 space-y-2 text-sm leading-relaxed text-on-surface-variant">
+                {trust.neverBuild.map((item) => (
+                  <li key={item}>· {item}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="border border-signal-positive/40 bg-signal-positive/5 p-5">
+              <p className="label-caps text-signal-positive">What actually moves the number</p>
+              <ul className="mt-3 space-y-2 text-sm leading-relaxed text-on-surface-variant">
+                {trust.whatHelps.map((item) => (
+                  <li key={item}>· {item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* The stored logo, probed with the PDF writer's own decoder. */}
+      {logo && (
+        <div className="mt-4 border border-outline bg-surface-container p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="label-caps text-on-surface">Logo (as the spec sheets will read it)</p>
+            <span className={`label-caps ${logo.status === "ok" ? "text-signal-positive" : logo.status === "not_saved" ? "text-on-surface-muted" : "text-error"}`}>
+              {logo.status.replace(/_/g, " ")}
+            </span>
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">{logo.message}</p>
+          {logo.width && (
+            <p className="mt-1 font-mono text-xs text-on-surface-muted">
+              {logo.format} · {logo.width}×{logo.height}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="mt-4 border border-crimson/40 bg-crimson/5 p-5">
         <p className="label-caps text-blush">Payment policy</p>

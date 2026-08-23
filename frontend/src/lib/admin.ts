@@ -78,6 +78,8 @@ export interface AdminOrderRow {
   stripe_reported_status: string | null;
   stripe_amount_total_cents: number | null;
   account_invite_sent_at: string | null;
+  origin_country?: string | null;
+  risk_level?: string | null;
 }
 
 export interface AdminOrderEvent {
@@ -95,6 +97,15 @@ export interface AdminOrderEvent {
 }
 
 export interface AdminOrderDetail extends AdminOrderRow {
+  courier: string | null;
+  origin_country: string | null;
+  origin_region: string | null;
+  origin_city: string | null;
+  origin_network: string | null;
+  origin_timezone: string | null;
+  risk_level: string | null;
+  risk_score: number | null;
+  risk_flags: { code: string; label: string; explanation: string; weight: number }[];
   shipping: Record<string, string>;
   subtotal_cents: number;
   discount_cents: number;
