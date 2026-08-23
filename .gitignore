@@ -4,3 +4,6 @@ node_modules/
 .DS_Store
 .open-next/
 .wrangler/
+
+# Supabase CLI scratch (created by `npx supabase`)
+supabase/.temp/

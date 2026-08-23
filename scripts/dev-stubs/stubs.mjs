@@ -99,7 +99,7 @@ const DEFAULTS = {
   }),
   system_state: () => ({ updated_at: now(), value: {} }),
   order_items: () => ({ id: randomUUID() }),
-  products: () => ({ id: randomUUID(), created_at: now(), compare_at_cents: null, badges: [], blurb: "", description: "", engine_size: "N/A", specs: [], box_contents: [], features: [], image: "", featured: false, in_stock: true }),
+  products: () => ({ id: randomUUID(), created_at: now(), compare_at_cents: null, badges: [], blurb: "", description: "", engine_size: "N/A", width: null, length: null, tagline: null, status: "active", colors: null, specs: [], box_contents: [], features: [], image: "", featured: false, in_stock: true }),
   contact_messages: () => ({ id: randomUUID(), read: false, created_at: now(), subject: "" }),
   newsletter_subscribers: () => ({ created_at: now() }),
   discount_codes: () => ({ active: true, created_at: now() }),

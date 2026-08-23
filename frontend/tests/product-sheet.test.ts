@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseMoneyToCents, parseProductSheet, slugify } from "../src/shared/core/product-sheet";
+import {
+  normaliseDimension,
+  parseMoneyToCents,
+  parseProductSheet,
+  slugify,
+} from "../src/shared/core/product-sheet";
 
 // A sheet written the way an owner actually writes one: inconsistent
 // separators, mixed field names, colours in three different shapes.
@@ -138,4 +143,90 @@ test("a missing category WARNS rather than failing the import", () => {
   const { products } = parseProductSheet("Name: Orphan\nPrice: $10");
   assert.equal(products.length, 1);
   assert.ok(products[0].warnings.some((w) => /category/i.test(w)));
+});
+
+// ---------------------------------------------------------------------------
+// Dimensions. These reach the printed spec sheet, which is what a buyer
+// measures their garage door against.
+// ---------------------------------------------------------------------------
+
+test("width and length written on their own lines reach the product", () => {
+  const { products } = parseProductSheet(
+    `Name: Hauler 400
+Price: $2,400
+Length: 72 in
+Width: 41 in`,
+  );
+  assert.equal(products[0].length, "72 in");
+  assert.equal(products[0].width, "41 in");
+});
+
+test("a dimension typed without a space is not printed as \"48in\"", () => {
+  assert.equal(normaliseDimension("48in"), "48 in");
+  assert.equal(normaliseDimension("  120cm "), "120 cm");
+  assert.equal(normaliseDimension('60"'), '60 "');
+});
+
+test("a product with no dimensions given claims none rather than inventing them", () => {
+  const { products } = parseProductSheet(`Name: Hauler 400\nPrice: $2,400`);
+  // An invented measurement is a returned machine and a shipping bill; the
+  // PDF omits the row entirely when these are null.
+  assert.equal(products[0].width, null);
+  assert.equal(products[0].length, null);
+});
+
+test("a combined Dimensions line is read as length by width", () => {
+  const { products } = parseProductSheet(
+    `Name: Hauler 400
+Price: $2,400
+Dimensions: 72 x 41 in`,
+  );
+  assert.equal(products[0].length, "72 in");
+  assert.equal(products[0].width, "41 in", "the unit carries to the first number too");
+});
+
+test("reading a combined line WARNS, because the order is an assumption", () => {
+  const { products } = parseProductSheet(
+    `Name: Hauler 400
+Price: $2,400
+Dimensions: 72 x 41 in`,
+  );
+  // Silently swapping length and width sells someone a machine that does not
+  // fit. The admin sees this in the preview before anything is saved.
+  assert.ok(
+    products[0].warnings.some((w) => w.includes("72 in") && w.includes("41 in")),
+    `expected a warning naming both numbers, got: ${JSON.stringify(products[0].warnings)}`,
+  );
+});
+
+test("an explicit Width beats a number inferred from a combined line", () => {
+  const { products } = parseProductSheet(
+    `Name: Hauler 400
+Price: $2,400
+Dimensions: 72 x 41 in
+Width: 44 in`,
+  );
+  assert.equal(products[0].width, "44 in");
+  assert.equal(products[0].length, "72 in");
+});
+
+test("a three-part LxWxH line still yields the right two numbers", () => {
+  const { products } = parseProductSheet(
+    `Name: Hauler 400
+Price: $2,400
+Dimensions: 72 x 41 x 38 in`,
+  );
+  assert.equal(products[0].length, "72 in");
+  assert.equal(products[0].width, "41 in");
+});
+
+test("an unreadable Dimensions line says so instead of failing the import", () => {
+  const { products } = parseProductSheet(
+    `Name: Hauler 400
+Price: $2,400
+Dimensions: ask the workshop`,
+  );
+  // Fail safe: the product still imports. It just has no dimensions.
+  assert.equal(products.length, 1);
+  assert.equal(products[0].width, null);
 });

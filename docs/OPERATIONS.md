@@ -136,6 +136,32 @@ does not appear in the list, it did not import.
 Re-importing updates by slug, and never overwrites a colour list you edited by
 hand in the product form.
 
+### Width and length
+
+`Length:` and `Width:` lines are printed on the product spec PDF, at the top of
+the specifications table — before the seller's own spec bullets, because "will
+it fit through my garage door" is the question that sheet gets printed for.
+
+Write the unit: `Length: 60 in`. The value is stored and printed exactly as
+typed, so a bare `60` prints as `60`. That is deliberate — picking a unit on the
+seller's behalf is how a spec sheet ends up confidently wrong, and a buyer who
+measures their doorway against the wrong number sends the machine back at your
+cost.
+
+A single combined line works too:
+
+```
+Dimensions: 60 x 34 in
+```
+
+It is read as **length by width**, the usual listing order, and the trailing
+unit carries to both numbers. Because that order is an assumption, the preview
+says which way round it read them — check it. If it is wrong, write `Length:`
+and `Width:` on their own lines; explicit lines always beat a combined one.
+
+A product with no dimensions given simply has none: the PDF omits the rows
+rather than printing "N/A".
+
 ## Tracking and couriers
 
 The order page has a courier dropdown of about 115 carriers grouped by region,

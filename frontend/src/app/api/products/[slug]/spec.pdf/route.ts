@@ -64,13 +64,23 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     color: INK,
   });
 
-  // Specifications
-  if (product.specs.length > 0) {
+  // Specifications.
+  //
+  // Width and length lead the table rather than sitting among the free-form
+  // spec bullets: "will it fit through my garage door" is the question this
+  // sheet gets printed for, and the answer should not depend on whether the
+  // seller happened to type a "Dimensions" bullet.
+  const dimensions: { label: string; value: string }[] = [];
+  if (product.length) dimensions.push({ label: "Overall length", value: product.length });
+  if (product.width) dimensions.push({ label: "Overall width", value: product.width });
+  const specRows = [...dimensions, ...product.specs];
+
+  if (specRows.length > 0) {
     y = doc.ensureSpace(y, 60);
     y -= 6;
     y = doc.rule(y, RULE);
     y = doc.text("SPECIFICATIONS", y, { size: 9, bold: true, color: MUTED, leading: 16 });
-    for (const spec of product.specs) {
+    for (const spec of specRows) {
       y = doc.ensureSpace(y, 18);
       doc.text(spec.label, y, { size: 10, color: MUTED });
       y = doc.text(spec.value, y, { size: 10, bold: true, color: INK, x: PAGE.MARGIN + 200 });

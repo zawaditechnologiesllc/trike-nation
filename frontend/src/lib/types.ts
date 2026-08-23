@@ -33,6 +33,9 @@ export interface Product {
   blurb: string;
   description: string;
   engineSize: "200CC" | "212CC" | "400CC" | "ELECTRIC" | "N/A";
+  /** Overall dimensions as the seller wrote them, unit included ("34 in"). */
+  width?: string;
+  length?: string;
   specs: { label: string; value: string }[];
   boxContents: string[];
   features: ProductFeature[];

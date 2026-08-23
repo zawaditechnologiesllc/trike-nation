@@ -233,6 +233,11 @@ here, which is what `/admin/system` reads to tell you whether the schedule is al
 **`announcements`**, **`articles`**, **`wishlists`** — the notice stripe with its own schedule per
 notice, long-form content, and saved products.
 
+**`products.width` / `products.length`** — text, not numeric, and deliberately so. A product sheet
+is typed by hand and says "48 in", "120cm" or plain "48"; storing a number means the schema has to
+pick a unit for the bare case. A spec sheet that states the wrong size with confidence is worse
+than one that repeats the seller's own words, because the buyer is measuring a doorway against it.
+
 Migrations are numbered and **every one is safe to run twice** — `create table if not exists`,
 `add column if not exists`, guarded policies and triggers. A migration that fails on a second run
 is one nobody dares run during a restore.

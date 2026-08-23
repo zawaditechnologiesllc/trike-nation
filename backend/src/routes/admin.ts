@@ -398,6 +398,10 @@ function productPatchFromBody(body: Record<string, unknown>): Record<string, unk
   if (typeof body.blurb === "string") patch.blurb = body.blurb;
   if (typeof body.description === "string") patch.description = body.description;
   if (typeof body.engineSize === "string") patch.engine_size = body.engineSize;
+  // Empty string clears a dimension; undefined leaves it alone. Without the
+  // distinction a typo can never be removed, only replaced.
+  if (typeof body.width === "string") patch.width = body.width.trim() || null;
+  if (typeof body.length === "string") patch.length = body.length.trim() || null;
   if (Array.isArray(body.specs)) patch.specs = body.specs;
   if (Array.isArray(body.boxContents)) patch.box_contents = body.boxContents;
   if (Array.isArray(body.features)) patch.features = body.features;
@@ -965,6 +969,8 @@ adminRouter.post("/products/import", async (req, res) => {
       compare_at_cents: product.compareAtCents,
       description: product.description,
       engine_size: product.engineSize,
+      width: product.width,
+      length: product.length,
       colors: product.colors,
       specs: product.specs,
       box_contents: product.boxContents,

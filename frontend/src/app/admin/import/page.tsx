@@ -20,6 +20,8 @@ Price: $1,100.00
 Was: $1,200
 Category: mini-trikes
 Engine: 200cc
+Length: 60 in
+Width: 34 in
 Badge: SALE
 Tagline: Custom Build • Worldwide Ship
 Description: The Viper Special Edition is engineered for the adrenaline seeker.
@@ -37,6 +39,7 @@ Product: 212cc Monster Minibike
 Price: 650
 Category: mini-bikes
 Engine: 212CC
+Dimensions: 52 x 29 in
 Details: Raw power in a compact frame.
 - Available in Red, Black and Blue`;
 
@@ -68,6 +71,13 @@ export default function ImportPage() {
       <p className="mt-1 font-mono text-xs text-on-surface-muted">
         Paste a product sheet. Fields can be in any order, and colours can be written any of the
         three usual ways. Preview first — it tells you exactly what would happen without saving.
+      </p>
+      <p className="mt-3 font-mono text-xs text-on-surface-muted">
+        <span className="text-on-secondary-fixed">Length</span> and{" "}
+        <span className="text-on-secondary-fixed">Width</span> are printed on the product
+        spec PDF, so write them with the unit — <code>Length: 60 in</code>. A single{" "}
+        <code>Dimensions: 60 x 34 in</code> line works too and is read as length by width;
+        the preview tells you which way round it was read.
       </p>
 
       <textarea

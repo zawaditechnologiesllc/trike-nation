@@ -21,6 +21,14 @@ export interface ParsedProduct {
   compareAtCents: number | null;
   category: string;
   engineSize: string;
+  /**
+   * Kept as the admin wrote them, unit and all ("48 in", "120 cm"). Parsing to
+   * a number means picking a unit for a bare "48", and a spec sheet that
+   * confidently states the wrong size is worse than one that repeats the
+   * seller's own words.
+   */
+  width: string | null;
+  length: string | null;
   colors: ProductColor[];
   specs: { label: string; value: string }[];
   boxContents: string[];
@@ -44,6 +52,9 @@ const FIELD_ALIASES: Record<string, string> = {
   "compare at": "compareAt", "was": "compareAt", "rrp": "compareAt", "list price": "compareAt",
   category: "category", type: "category",
   engine: "engine", "engine size": "engine", cc: "engine",
+  width: "width", "overall width": "width",
+  length: "length", "overall length": "length",
+  dimensions: "dimensions", size: "dimensions", "overall size": "dimensions",
   badge: "badge", label: "badge",
   stock: "stock", availability: "stock", "in stock": "stock",
   description: "description", details: "description", about: "description",
@@ -93,6 +104,40 @@ export function parseMoneyToCents(raw: string | null | undefined): number | null
   const value = Number(normalised);
   if (!Number.isFinite(value) || value < 0) return null;
   return Math.round(value * 100);
+}
+
+/** Tidies one dimension as written: "  48in " → "48 in". Junk becomes null. */
+export function normaliseDimension(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const text = String(raw).trim().replace(/\s+/g, " ");
+  if (!text || !/\d/.test(text)) return null;
+  // "48in" reads as a typo on a spec sheet; put the space back without
+  // touching the unit the seller chose.
+  return text.replace(/(\d)\s*(mm|cm|m|in|inch|inches|ft|feet|")/gi, "$1 $2").trim();
+}
+
+/**
+ * A combined line: "Dimensions: 60 x 34 x 28 in".
+ *
+ * The near-universal listing convention is length × width × height, so the
+ * first number is the length and the second the width. That IS an assumption,
+ * and a swapped pair is a customer ordering something that will not fit
+ * through a door — so the caller raises a warning naming what was read, and
+ * the admin sees it in the import preview before anything is saved.
+ */
+export function splitDimensions(raw: string | null | undefined): { length: string | null; width: string | null } {
+  if (!raw) return { length: null, width: null };
+  const text = String(raw).trim();
+  // The trailing unit usually applies to every number: "60 x 34 in".
+  const unit = text.match(/(mm|cm|m|in|inch|inches|ft|feet|")\s*$/i)?.[1] ?? "";
+  const parts = text.split(/\s*[x×*]\s*/i).filter((part) => /\d/.test(part));
+  if (parts.length < 2) return { length: null, width: null };
+  const withUnit = (part: string): string | null => {
+    const own = normaliseDimension(part);
+    if (!own) return null;
+    return /[a-z"]/i.test(own) || !unit ? own : normaliseDimension(`${own} ${unit}`);
+  };
+  return { length: withUnit(parts[0]), width: withUnit(parts[1]) };
 }
 
 function splitBlocks(sheet: string): string[] {
@@ -174,6 +219,20 @@ function parseBlock(block: string): ParsedProduct | { reason: string } {
   const stockText = (values.stock ?? "").toLowerCase();
   const inStock = stockText ? !/(out|none|0|no)\b/.test(stockText) : true;
 
+  // An explicit "Width:" always beats a number inferred from a combined line.
+  const combined = splitDimensions(values.dimensions);
+  const width = normaliseDimension(values.width) ?? combined.width;
+  const length = normaliseDimension(values.length) ?? combined.length;
+  if (values.dimensions && !values.width && !values.length && (combined.width || combined.length)) {
+    warnings.push(
+      `Read "${values.dimensions.trim()}" as length ${combined.length ?? "?"} by width ${combined.width ?? "?"}. ` +
+        `Write "Length:" and "Width:" on their own lines if that is the wrong way round.`,
+    );
+  }
+  if (values.dimensions && !combined.width && !combined.length && !width && !length) {
+    warnings.push(`Could not read a width or length from "${values.dimensions.trim()}".`);
+  }
+
   return {
     name,
     slug: slugify(values.slug || name),
@@ -183,6 +242,8 @@ function parseBlock(block: string): ParsedProduct | { reason: string } {
     compareAtCents: parseMoneyToCents(values.compareAt),
     category: (values.category ?? "").trim().toLowerCase().replace(/\s+/g, "-"),
     engineSize: (values.engine ?? "N/A").trim().toUpperCase(),
+    width,
+    length,
     colors,
     specs,
     boxContents: listValues.box ?? [],

@@ -34,6 +34,11 @@ export interface ProductRow {
   blurb: string;
   description: string;
   engine_size: string;
+  width: string | null;
+  length: string | null;
+  tagline: string | null;
+  status: string | null;
+  colors: { name: string; hex: string | null }[] | null;
   specs: { label: string; value: string }[];
   box_contents: string[];
   features: { title: string; text: string }[];
@@ -54,6 +59,18 @@ export function toProduct(row: ProductRow) {
     blurb: row.blurb,
     description: row.description,
     engineSize: row.engine_size,
+    // Dimensions reach the product page and the spec PDF. Absent stays absent
+    // rather than becoming "N/A" — an invented measurement is a returned
+    // machine and a shipping bill.
+    width: row.width ?? undefined,
+    length: row.length ?? undefined,
+    tagline: row.tagline ?? undefined,
+    status: row.status ?? undefined,
+    // Without this the colour column is written by the importer and the admin
+    // backfill and then read by nobody: the storefront and the PDF both fall
+    // back to parsing the description, so a hand-edited colour list never
+    // shows up.
+    colors: row.colors ?? undefined,
     specs: row.specs ?? [],
     boxContents: row.box_contents ?? [],
     features: row.features ?? [],
