@@ -122,6 +122,8 @@ export interface PaymentsConfig {
 }
 
 export interface SiteSettings {
+  legalName?: string | null;
+  logoUrl?: string | null;
   hero: {
     kicker: string;
     title: string;

@@ -7,6 +7,10 @@ import type { SiteSettings } from "./types";
  * /data/site-settings.json — the seeded values admins edit in /admin/settings.
  */
 export const DEFAULT_SETTINGS: SiteSettings = {
+  // Left empty on purpose: an unset legal name is omitted from structured
+  // data, and inventing one is worse than publishing none.
+  legalName: "",
+  logoUrl: null,
   hero: {
     kicker: "Handcrafted Performance",
     title: `${BRAND.name}:`,

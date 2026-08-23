@@ -52,14 +52,30 @@ export const GENERIC_CLIENTS_NEVER_BLOCK = [
 const LOWER_TOKENS = AI_CRAWLER_TOKENS.map((t) => t.toLowerCase());
 const LOWER_SEARCH = SEARCH_CRAWLERS_NEVER_BLOCK.map((t) => t.toLowerCase());
 
-/** True when this user-agent is one of the named AI training crawlers. */
+function longestMatch(userAgent: string, tokens: string[]): number {
+  let longest = 0;
+  for (const token of tokens) {
+    if (userAgent.includes(token) && token.length > longest) longest = token.length;
+  }
+  return longest;
+}
+
+/**
+ * True when this user-agent is one of the named AI training crawlers.
+ *
+ * Matching is LONGEST-WINS rather than "search always wins", because the two
+ * lists overlap by design: "Applebot" is a search crawler and
+ * "Applebot-Extended" is Apple's AI-training token, and a plain substring
+ * check lets the shorter one shadow the longer one. On a genuine tie the
+ * search list wins — serving one AI crawler is far cheaper than delisting the
+ * shop.
+ */
 export function isAiCrawler(userAgent: string | null | undefined): boolean {
   if (!userAgent) return false;
   const ua = userAgent.toLowerCase();
-  // A search crawler wins any ambiguity — better to serve one AI crawler than
-  // to accidentally delist the shop.
-  if (LOWER_SEARCH.some((token) => ua.includes(token))) return false;
-  return LOWER_TOKENS.some((token) => ua.includes(token));
+  const ai = longestMatch(ua, LOWER_TOKENS);
+  if (ai === 0) return false;
+  return ai > longestMatch(ua, LOWER_SEARCH);
 }
 
 /**

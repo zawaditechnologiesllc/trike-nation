@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchCategories, fetchProduct, fetchProducts, fetchTestimonials } from "@/lib/api";
+import { fetchCategories, fetchProduct, fetchProducts, fetchSettings, fetchTestimonials } from "@/lib/api";
 import { money } from "@/lib/format";
 import AddToCartButton from "@/components/AddToCartButton";
 import Badge from "@/components/Badge";
@@ -12,6 +12,9 @@ import Stars from "@/components/Stars";
 import ProductCard from "@/components/ProductCard";
 import SpecSheetLink from "@/components/SpecSheetLink";
 import { colorsFromDescription } from "@shared/core/colors";
+import { productJsonLd } from "@shared/core/trust";
+import JsonLd from "@/components/JsonLd";
+import { BRAND } from "@/lib/brand";
 
 export const revalidate = 60;
 
@@ -39,6 +42,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // when an order arrives, so what the buyer sees is what gets validated.
   const colors = product.colors?.length ? product.colors : colorsFromDescription(product.description);
   const productWithColors = { ...product, colors };
+  const settings = await fetchSettings();
   const category = categories.find((c) => c.slug === product.category);
   const savings =
     product.compareAtCents && product.compareAtCents > product.priceCents
@@ -47,6 +51,30 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   return (
     <div>
+      <JsonLd
+        data={productJsonLd(
+          {
+            name: product.name,
+            slug: product.slug,
+            description: product.description,
+            image: product.image?.startsWith("http") ? product.image : `${BRAND.url}${product.image}`,
+            priceCents: product.priceCents,
+            currency: "usd",
+            inStock: product.inStock,
+            colors,
+          },
+          {
+            name: BRAND.name,
+            legalName: settings.legalName,
+            url: BRAND.url,
+            description: product.blurb,
+            email: settings.contact.email,
+            phone: settings.contact.phone,
+            address: settings.contact.address,
+            social: settings.social,
+          },
+        )}
+      />
       {/* Purchase panel */}
       <section className="mx-auto grid max-w-7xl gap-12 px-4 py-12 md:px-12 lg:grid-cols-2">
         <div>

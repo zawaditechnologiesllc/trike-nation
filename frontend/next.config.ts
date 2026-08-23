@@ -1,9 +1,21 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 /** One year — product images are immutable (each upload gets a new URL). */
 const IMAGE_CACHE_SECONDS = 31_536_000;
 
 const nextConfig: NextConfig = {
+  // shared/core lives above this directory so the storefront, the API and the
+  // tests read one definition. tsconfig paths satisfy the typechecker;
+  // Turbopack needs the alias spelled out because the target is outside the
+  // app root.
+  turbopack: {
+    root: path.join(__dirname, ".."),
+    resolveAlias: {
+      "@shared": path.join(__dirname, "..", "shared"),
+    },
+  },
+  outputFileTracingRoot: path.join(__dirname, ".."),
   images: {
     // Product imagery is admin-managed: uploads land in Supabase Storage and
     // admins may also paste external URLs, so any https host is allowed.
