@@ -7,7 +7,7 @@ import {
   deliveryWindowLabel,
   estimatedDeliveryAt,
   zoneFor,
-} from "../src/lib/core/delivery";
+} from "../../shared/core/delivery";
 
 test("an unknown country is SERVED, not refused", () => {
   // Refusing an unrecognised destination silently loses real customers.

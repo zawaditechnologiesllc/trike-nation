@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assessRisk, riskLevel, riskFlags, shouldBadge } from "../src/lib/core/risk";
+import { assessRisk, riskLevel, riskFlags, shouldBadge } from "../../shared/core/risk";
 
 test("a VPN user ALONE never reaches the top level", () => {
   // An owner who sees red on every VPN user stops reading badges within a

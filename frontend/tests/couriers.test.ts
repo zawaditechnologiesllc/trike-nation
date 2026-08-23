@@ -6,7 +6,7 @@ import {
   generateInternalReference,
   isInternalReference,
   trackingLink,
-} from "../src/lib/core/couriers";
+} from "../../shared/core/couriers";
 
 test("REFUSES to link an internal reference out to a carrier", () => {
   // A link that lands on "not found" makes the customer think nothing shipped.
