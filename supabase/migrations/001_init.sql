@@ -1,4 +1,5 @@
 -- Go Cart Grip — initial schema.
+-- Safe to run twice: every statement is guarded.
 -- Run in the Supabase SQL editor (or `supabase db push`) before seed.sql.
 
 create extension if not exists "pgcrypto";
@@ -7,7 +8,7 @@ create extension if not exists "pgcrypto";
 -- Catalog
 -- ---------------------------------------------------------------------------
 
-create table public.categories (
+create table if not exists public.categories (
   slug        text primary key,
   name        text not null,
   tagline     text not null default '',
@@ -17,7 +18,7 @@ create table public.categories (
   sort_order  int  not null default 0
 );
 
-create table public.products (
+create table if not exists public.products (
   id               uuid primary key default gen_random_uuid(),
   slug             text not null unique,
   name             text not null,
@@ -37,7 +38,7 @@ create table public.products (
   created_at       timestamptz not null default now()
 );
 
-create table public.testimonials (
+create table if not exists public.testimonials (
   id         uuid primary key default gen_random_uuid(),
   name       text not null,
   initials   text not null,
@@ -47,14 +48,14 @@ create table public.testimonials (
   sort_order int  not null default 0
 );
 
-create table public.discount_codes (
+create table if not exists public.discount_codes (
   code        text primary key,
   percent_off int  not null check (percent_off between 1 and 100),
   active      boolean not null default true,
   created_at  timestamptz not null default now()
 );
 
-create table public.newsletter_subscribers (
+create table if not exists public.newsletter_subscribers (
   email      text primary key,
   created_at timestamptz not null default now()
 );
@@ -63,7 +64,7 @@ create table public.newsletter_subscribers (
 -- Profiles (mirrors auth.users; email/password auth only)
 -- ---------------------------------------------------------------------------
 
-create table public.profiles (
+create table if not exists public.profiles (
   id         uuid primary key references auth.users(id) on delete cascade,
   email      text,
   first_name text,
@@ -83,6 +84,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
@@ -91,7 +93,7 @@ create trigger on_auth_user_created
 -- Orders (written by the Render backend with the service-role key)
 -- ---------------------------------------------------------------------------
 
-create table public.orders (
+create table if not exists public.orders (
   id             uuid primary key default gen_random_uuid(),
   user_id        uuid references auth.users(id) on delete set null,
   email          text not null,
@@ -104,7 +106,7 @@ create table public.orders (
   created_at     timestamptz not null default now()
 );
 
-create table public.order_items (
+create table if not exists public.order_items (
   id               uuid primary key default gen_random_uuid(),
   order_id         uuid not null references public.orders(id) on delete cascade,
   product_id       uuid references public.products(id) on delete set null,
@@ -114,8 +116,8 @@ create table public.order_items (
   qty              int  not null check (qty > 0)
 );
 
-create index orders_user_id_idx on public.orders(user_id);
-create index order_items_order_id_idx on public.order_items(order_id);
+create index if not exists orders_user_id_idx on public.orders(user_id);
+create index if not exists order_items_order_id_idx on public.order_items(order_id);
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security
@@ -131,20 +133,27 @@ alter table public.orders                 enable row level security;
 alter table public.order_items            enable row level security;
 
 -- Catalog is publicly readable.
+drop policy if exists "categories are public" on public.categories;
 create policy "categories are public"   on public.categories   for select using (true);
+drop policy if exists "products are public" on public.products;
 create policy "products are public"     on public.products     for select using (true);
+drop policy if exists "testimonials are public" on public.testimonials;
 create policy "testimonials are public" on public.testimonials for select using (true);
 
 -- Discount codes and newsletter emails are only touched by the backend
 -- (service role bypasses RLS) — no anon policies on purpose.
 
 -- Users can see and edit their own profile.
+drop policy if exists "read own profile" on public.profiles;
 create policy "read own profile"   on public.profiles for select using (auth.uid() = id);
+drop policy if exists "update own profile" on public.profiles;
 create policy "update own profile" on public.profiles for update using (auth.uid() = id);
 
 -- Users can read their own orders + items. Inserts happen via service role.
+drop policy if exists "read own orders" on public.orders;
 create policy "read own orders" on public.orders
   for select using (auth.uid() = user_id);
+drop policy if exists "read own order items" on public.order_items;
 create policy "read own order items" on public.order_items
   for select using (
     exists (

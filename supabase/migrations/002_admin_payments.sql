@@ -1,4 +1,5 @@
 -- Go Cart Grip — admin panel, site settings, payments, and messaging.
+-- Safe to run twice: every statement is guarded.
 -- Run after 001_init.sql.
 
 -- ---------------------------------------------------------------------------
@@ -13,7 +14,7 @@ alter table public.profiles
 -- Single-row table; written by the backend with the service-role key.
 -- ---------------------------------------------------------------------------
 
-create table public.site_settings (
+create table if not exists public.site_settings (
   id            int primary key default 1 check (id = 1),
   hero          jsonb not null default '{}',
   announcements jsonb not null default '[]',
@@ -23,13 +24,14 @@ create table public.site_settings (
 );
 
 alter table public.site_settings enable row level security;
+drop policy if exists "site settings are public" on public.site_settings;
 create policy "site settings are public" on public.site_settings for select using (true);
 
 -- ---------------------------------------------------------------------------
 -- Contact form inbox
 -- ---------------------------------------------------------------------------
 
-create table public.contact_messages (
+create table if not exists public.contact_messages (
   id         uuid primary key default gen_random_uuid(),
   name       text not null,
   email      text not null,
