@@ -55,6 +55,11 @@ export const env = {
   deliveryUpdateDays: intList("DELIVERY_UPDATE_DAYS", [7, 12, 20]),
   deliveryMinDays: Number(optional("DELIVERY_MIN_DAYS") ?? 12),
   deliveryMaxDays: Number(optional("DELIVERY_MAX_DAYS") ?? 30),
+  /** Return window and hand-processed refund SLA, quoted in policy and email. */
+  returnDays: Number(optional("RETURN_DAYS") ?? 30),
+  refundDays: Number(optional("REFUND_DAYS") ?? 7),
+  /** Refund notices come from no-reply@ on the same verified domain. */
+  noReplyEmail: optional("NO_REPLY_EMAIL") ?? `no-reply@${domain}`,
 
   /** One year — product images are content-addressed by upload timestamp. */
   imageCacheSeconds: Number(optional("IMAGE_CACHE_SECONDS") ?? 31536000),

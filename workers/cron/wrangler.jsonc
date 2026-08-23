@@ -5,9 +5,12 @@
   "compatibility_date": "2025-08-01",
   "observability": { "enabled": true },
   "triggers": {
-    // 14:00 UTC daily (07:00 PT) — the sweep is idempotent per milestone, so
-    // a missed run is caught up by the next one.
-    "crons": ["0 14 * * *"]
+    // Every 15 minutes. Each sweep claims an order_events row before acting,
+    // so overlapping runs cannot double-send and a frequent clock costs
+    // nothing. A missed run is caught up by the next one, and dueStage returns
+    // the LAST due stage, so even a long outage produces one email per order
+    // rather than a burst.
+    "crons": ["*/15 * * * *"]
   },
   "vars": {
     // Backend base URL, no trailing slash.

@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { db } from "../supabase";
 import { env } from "../env";
 import {
+  sendAbandonedCart,
   sendAccountInvite,
   sendDeliveryUpdate,
   sendOrderStatusChanged,
@@ -8,6 +10,14 @@ import {
   type OrderEmailData,
   type SendResult,
 } from "../email";
+import { claimStage, markClaimResult, recordStage } from "./events";
+import {
+  ABANDONED_REMINDER_DAYS,
+  abandonedStageKey,
+  dueAbandonedReminder,
+  dueStage,
+  dueStages,
+} from "../../../shared/core/stages";
 import { retrieveCheckoutSession } from "../payments/stripe";
 
 /**
@@ -57,13 +67,18 @@ export interface OrderRow {
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
   delivery_updates_sent: number[] | null;
+  fulfillment_stage: string;
+  courier: string | null;
+  last_notified_at: string | null;
+  shipping: unknown;
+  order_number: string | null;
   created_at: string;
 }
 
 // One literal, deliberately: supabase-js only derives row types from a
 // literal select string — concatenating it collapses the result to `unknown`.
 const ORDER_COLUMNS =
-  "id, user_id, email, status, payment_status, subtotal_cents, discount_cents, total_cents, discount_code, tracking_number, paid_at, account_invite_sent_at, account_linked_at, stripe_session_id, stripe_payment_intent_id, delivery_updates_sent, created_at";
+  "id, user_id, email, status, payment_status, subtotal_cents, discount_cents, total_cents, discount_code, tracking_number, paid_at, account_invite_sent_at, account_linked_at, stripe_session_id, stripe_payment_intent_id, delivery_updates_sent, last_notified_at, fulfillment_stage, courier, shipping, order_number, created_at";
 
 export async function getOrder(orderId: string): Promise<OrderRow | null> {
   const { data } = await db().from("orders").select(ORDER_COLUMNS).eq("id", orderId).maybeSingle();
@@ -92,6 +107,8 @@ export async function getOrderEmailData(order: OrderRow): Promise<OrderEmailData
 export interface EventInput {
   orderId: string;
   type: string;
+  /** Supply only for something that must happen at most once per order. */
+  stage?: string;
   fromStatus?: string | null;
   toStatus?: string | null;
   message?: string;
@@ -105,6 +122,12 @@ export async function recordEvent(input: EventInput): Promise<void> {
     .from("order_events")
     .insert({
       order_id: input.orderId,
+      // order_events.stage is NOT NULL and UNIQUE per order — it is the
+      // idempotency key for things that happen ONCE (see orders/events.ts).
+      // Free-form history (notes, status changes, invites) can legitimately
+      // repeat, so each gets its own unguessable key rather than competing
+      // for a shared one.
+      stage: input.stage ?? `event:${randomUUID()}`,
       type: input.type,
       from_status: input.fromStatus ?? null,
       to_status: input.toStatus ?? null,
@@ -429,23 +452,41 @@ export async function syncStripeSession(orderId: string, sessionId?: string | nu
 }
 
 // ---------------------------------------------------------------------------
-// Delivery progress cron (day 7 / 12 / 20 after confirmed payment)
+// The clock: fulfilment stages and abandoned-order recovery
+//
+// Both sweeps claim an order_events row before doing anything. The claim IS
+// the idempotency check — see orders/events.ts. Two overlapping cron runs
+// therefore cannot double-send, without either of them holding a lock or
+// asking "did we already?" first.
 // ---------------------------------------------------------------------------
 
-export interface DeliverySweepResult {
+export interface SweepResult {
   checked: number;
-  sent: { orderId: string; day: number; ok: boolean }[];
+  sent: { orderId: string; stage: string; ok: boolean }[];
   skipped: number;
   ranAt: string;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const DAY_MS = 86_400_000;
 
-export async function runDeliveryUpdates(now = new Date()): Promise<DeliverySweepResult> {
-  const milestones = [...env.deliveryUpdateDays].sort((a, b) => a - b);
-  const oldest = new Date(now.getTime() - (Math.max(...milestones) + 45) * DAY_MS).toISOString();
+/** Line items in the shape the stage emails want. */
+async function itemsFor(orderId: string): Promise<{ name: string; qty: number; color?: string | null }[]> {
+  const { data } = await db()
+    .from("order_items")
+    .select("product_name, qty, color")
+    .eq("order_id", orderId);
+  return (data ?? []).map((i) => ({ name: i.product_name, qty: i.qty, color: i.color }));
+}
 
-  // Only orders in flight: confirmed but not yet delivered, cancelled or refunded.
+/**
+ * Advances every in-flight order to the stage it is actually due, and emails
+ * only that one. `dueStage` returns the LAST due stage, so an order paid 40
+ * days ago lands correctly in a single step instead of firing four emails.
+ */
+export async function runDeliveryUpdates(now = new Date()): Promise<SweepResult> {
+  const result: SweepResult = { checked: 0, sent: [], skipped: 0, ranAt: now.toISOString() };
+
+  const oldest = new Date(now.getTime() - 120 * DAY_MS).toISOString();
   const { data, error } = await db()
     .from("orders")
     .select(ORDER_COLUMNS)
@@ -456,77 +497,212 @@ export async function runDeliveryUpdates(now = new Date()): Promise<DeliverySwee
     .order("paid_at", { ascending: true })
     .limit(500);
 
-  const result: DeliverySweepResult = { checked: 0, sent: [], skipped: 0, ranAt: now.toISOString() };
   if (error) {
-    console.error("[cron] could not load orders for delivery updates", error);
+    console.error("[cron] could not load orders for the stage sweep", error);
     return result;
   }
 
   for (const row of (data ?? []) as unknown as OrderRow[]) {
     result.checked += 1;
-    const paidAt = row.paid_at ? new Date(row.paid_at).getTime() : null;
+    const paidAt = row.paid_at ? new Date(row.paid_at) : null;
     if (!paidAt) {
       result.skipped += 1;
       continue;
     }
-    const elapsedDays = Math.floor((now.getTime() - paidAt) / DAY_MS);
-    const already = new Set(row.delivery_updates_sent ?? []);
-    // Only the newest milestone reached — never a burst of backdated emails.
-    const due = milestones.filter((day) => elapsedDays >= day && !already.has(day));
-    if (due.length === 0) {
+
+    const due = dueStage(paidAt, now);
+    if (!due || !due.emails || due.stage === row.fulfillment_stage) {
       result.skipped += 1;
       continue;
     }
-    const day = due[due.length - 1];
 
-    const sendResult = await sendDeliveryUpdate(row.email, row.id, day, {
-      trackingNumber: row.tracking_number,
-      status: row.status,
+    // Record every stage we passed, so the customer timeline has no holes —
+    // but only the last one is emailed.
+    for (const passed of dueStages(paidAt, now)) {
+      if (passed.stage === due.stage) continue;
+      await recordStage({
+        orderId: row.id,
+        stage: passed.stage,
+        type: "stage",
+        title: passed.title,
+        message: passed.body,
+        actor: { email: "delivery-cron" },
+      });
+    }
+
+    const claim = await claimStage({
+      orderId: row.id,
+      stage: due.stage,
+      type: "stage",
+      title: due.title,
+      message: due.body,
+      toStatus: row.status,
+      actor: { email: "delivery-cron" },
+      metadata: { days_since_paid: Math.floor((now.getTime() - paidAt.getTime()) / DAY_MS) },
     });
 
-    // Mark every passed milestone so a late run doesn't replay the older ones.
-    const merged = [...new Set([...already, ...due])].sort((a, b) => a - b);
+    if (!claim.claimed) {
+      // Another run already holds this stage. Do nothing — do not retry.
+      result.skipped += 1;
+      continue;
+    }
+
+    const sendResult = await sendDeliveryUpdate(row.email, row.id, due.stage, {
+      trackingNumber: row.tracking_number,
+      courier: row.courier,
+      countryCode: shippingCountry(row),
+      items: await itemsFor(row.id),
+    });
+
+    if (claim.eventId) {
+      await markClaimResult(claim.eventId, {
+        emailSent: sendResult.ok,
+        emailTo: row.email,
+        emailSubject: due.title,
+        error: sendResult.error,
+      });
+    }
+
+    // A failed email must never roll back the order.
     await db()
       .from("orders")
       .update({
-        delivery_updates_sent: merged,
-        last_delivery_update_at: now.toISOString(),
-        last_notified_at: now.toISOString(),
+        fulfillment_stage: due.stage,
+        stage_updated_at: now.toISOString(),
+        last_notified_at: sendResult.ok ? now.toISOString() : row.last_notified_at,
       })
       .eq("id", row.id);
 
-    await recordEvent({
-      orderId: row.id,
-      type: "delivery_update",
-      toStatus: row.status,
-      message: `Day ${day} delivery update sent (${elapsedDays} days since payment).`,
-      actor: { email: "delivery-cron" },
-      email: { to: row.email, subject: `Day ${day} update`, result: sendResult },
-      metadata: { day, elapsed_days: elapsedDays, milestones_marked: merged },
-    });
-
-    result.sent.push({ orderId: row.id, day, ok: sendResult.ok });
+    result.sent.push({ orderId: row.id, stage: due.stage, ok: sendResult.ok });
   }
 
+  await recordSweep("delivery_cron", result, now);
+  console.log(
+    `[cron] stages: checked ${result.checked}, sent ${result.sent.length}, skipped ${result.skipped}`,
+  );
+  return result;
+}
+
+/**
+ * Abandoned-order recovery: chase at day 3, 7 and 12, then stop.
+ *
+ * Before every send we check whether this address has bought anything since.
+ * If the check ERRORS we skip the send — failing safe, because emailing "you
+ * left something behind" to somebody who has already paid is worse than
+ * staying quiet. Never invents a discount, a deadline or a stock scare.
+ */
+export async function runAbandonedRecovery(now = new Date()): Promise<SweepResult> {
+  const result: SweepResult = { checked: 0, sent: [], skipped: 0, ranAt: now.toISOString() };
+
+  const oldest = new Date(now.getTime() - 30 * DAY_MS).toISOString();
+  const { data, error } = await db()
+    .from("orders")
+    .select(ORDER_COLUMNS)
+    .eq("status", "pending_payment")
+    .gte("created_at", oldest)
+    .order("created_at", { ascending: true })
+    .limit(500);
+
+  if (error) {
+    console.error("[cron] could not load abandoned orders", error);
+    return result;
+  }
+
+  for (const row of (data ?? []) as unknown as OrderRow[]) {
+    result.checked += 1;
+    const createdAt = new Date(row.created_at);
+    const day = dueAbandonedReminder(createdAt, now);
+    if (day === null) {
+      result.skipped += 1;
+      continue;
+    }
+
+    // Has this address bought anything since? Fail SAFE on error.
+    const { data: purchases, error: purchaseError } = await db()
+      .from("orders")
+      .select("id")
+      .ilike("email", row.email)
+      .eq("payment_status", "paid")
+      .gte("created_at", row.created_at)
+      .limit(1);
+    if (purchaseError) {
+      console.warn("[cron] purchase check failed, skipping reminder", purchaseError);
+      result.skipped += 1;
+      continue;
+    }
+    if ((purchases ?? []).length > 0) {
+      // Stop permanently: claim every remaining reminder so no later run sends.
+      for (const remaining of ABANDONED_REMINDER_DAYS) {
+        await recordStage({
+          orderId: row.id,
+          stage: abandonedStageKey(remaining),
+          type: "abandoned_stopped",
+          message: "Stopped: this customer has bought since.",
+          actor: { email: "abandoned-cron" },
+        });
+      }
+      result.skipped += 1;
+      continue;
+    }
+
+    const claim = await claimStage({
+      orderId: row.id,
+      stage: abandonedStageKey(day),
+      type: "abandoned_reminder",
+      title: `Abandoned reminder, day ${day}`,
+      message: `Day ${day} abandoned-cart reminder.`,
+      actor: { email: "abandoned-cron" },
+    });
+    if (!claim.claimed) {
+      result.skipped += 1;
+      continue;
+    }
+
+    const emailData = await getOrderEmailData(row);
+    const sendResult = await sendAbandonedCart(row.email, emailData, {
+      resumeUrl: `${env.frontendUrl}/cart?resume=${row.id}`,
+      reminderNumber: ABANDONED_REMINDER_DAYS.indexOf(day as never) + 1,
+    });
+
+    if (claim.eventId) {
+      await markClaimResult(claim.eventId, {
+        emailSent: sendResult.ok,
+        emailTo: row.email,
+        emailSubject: `Abandoned reminder day ${day}`,
+        error: sendResult.error,
+      });
+    }
+    result.sent.push({ orderId: row.id, stage: abandonedStageKey(day), ok: sendResult.ok });
+  }
+
+  await recordSweep("abandoned_cron", result, now);
+  console.log(
+    `[cron] abandoned: checked ${result.checked}, sent ${result.sent.length}, skipped ${result.skipped}`,
+  );
+  return result;
+}
+
+async function recordSweep(key: string, result: SweepResult, now: Date): Promise<void> {
   await db()
     .from("system_state")
     .upsert(
       {
-        key: "delivery_cron",
+        key,
         value: {
           ran_at: result.ranAt,
           checked: result.checked,
           sent: result.sent.length,
           skipped: result.skipped,
-          milestones,
         },
-        updated_at: result.ranAt,
+        updated_at: now.toISOString(),
       },
       { onConflict: "key" },
     );
+}
 
-  console.log(
-    `[cron] delivery updates: checked ${result.checked}, sent ${result.sent.length}, skipped ${result.skipped}`,
-  );
-  return result;
+/** Destination country, for the delivery window quoted in stage emails. */
+function shippingCountry(row: OrderRow): string | null {
+  const shipping = row.shipping as Record<string, unknown> | null | undefined;
+  const country = shipping?.country;
+  return typeof country === "string" ? country : null;
 }

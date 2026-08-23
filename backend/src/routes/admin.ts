@@ -4,6 +4,8 @@ import { env, integrationStatus } from "../env";
 import { requireAdmin } from "../auth";
 import { resendHealth, sendOrderStatusChanged, sendDeliveryUpdate } from "../email";
 import { refundPayment, stripeAccountSnapshot, stripeEnabled, stripeLiveMode } from "../payments/stripe";
+import { claimStage, markClaimResult } from "../orders/events";
+import { STAGES, stageDefinition } from "../../../shared/core/stages";
 import {
   ORDER_STATUSES,
   PAID_STATUSES,
@@ -11,6 +13,7 @@ import {
   getOrder,
   linkOrderToAccount,
   recordEvent,
+  runAbandonedRecovery,
   runDeliveryUpdates,
   setOrderStatus,
   syncStripeSession,
@@ -274,28 +277,73 @@ adminRouter.post("/orders/:id/notify", async (req, res) => {
   res.json({ ok: result.ok, error: result.error });
 });
 
-/** Send the next delivery-progress email for one order, on demand. */
-adminRouter.post("/orders/:id/delivery-update", async (req, res) => {
+/**
+ * Jump an order to a fulfilment stage by hand, and email it.
+ *
+ * Uses the same order_events claim as the cron, so pressing this while a sweep
+ * is running cannot double-send: whichever gets there first wins and the other
+ * is told the stage was already claimed.
+ */
+adminRouter.post("/orders/:id/stage", async (req, res) => {
   const order = await getOrder(req.params.id);
   if (!order) return res.status(404).json({ error: "Order not found" });
-  const day = Math.round(Number(req.body?.day)) || env.deliveryUpdateDays[0];
-  const result = await sendDeliveryUpdate(order.email, order.id, day, {
-    trackingNumber: order.tracking_number,
-    status: order.status,
+
+  const stageKey = String(req.body?.stage ?? "");
+  const definition = stageDefinition(stageKey);
+  if (!definition) {
+    return res.status(400).json({ error: `Unknown stage. Expected one of: ${STAGES.join(", ")}.` });
+  }
+
+  const claim = await claimStage({
+    orderId: order.id,
+    stage: definition.stage,
+    type: "stage",
+    title: definition.title,
+    message: definition.body,
+    actor: { id: req.user!.id, email: req.user!.email },
+    metadata: { manual: true },
   });
-  const merged = [...new Set([...(order.delivery_updates_sent ?? []), day])].sort((a, b) => a - b);
+  if (!claim.claimed) {
+    return res.json({
+      ok: true,
+      stage: definition.stage,
+      alreadySent: true,
+      message: "That stage was already recorded, so the customer was not emailed again.",
+    });
+  }
+
+  const { data: items } = await db()
+    .from("order_items")
+    .select("product_name, qty, color")
+    .eq("order_id", order.id);
+
+  const shipping = order.shipping as Record<string, unknown> | null;
+  const result = await sendDeliveryUpdate(order.email, order.id, definition.stage, {
+    trackingNumber: order.tracking_number,
+    courier: order.courier,
+    countryCode: typeof shipping?.country === "string" ? shipping.country : null,
+    items: (items ?? []).map((i) => ({ name: i.product_name, qty: i.qty, color: i.color })),
+  });
+  if (claim.eventId) {
+    await markClaimResult(claim.eventId, {
+      emailSent: result.ok,
+      emailTo: order.email,
+      emailSubject: definition.title,
+      error: result.error,
+    });
+  }
   await db()
     .from("orders")
-    .update({ delivery_updates_sent: merged, last_delivery_update_at: new Date().toISOString() })
+    .update({ fulfillment_stage: definition.stage, stage_updated_at: new Date().toISOString() })
     .eq("id", order.id);
-  await recordEvent({
-    orderId: order.id,
-    type: "delivery_update",
-    message: `Day ${day} delivery update sent manually.`,
-    actor: { id: req.user!.id, email: req.user!.email },
-    email: { to: order.email, subject: `Day ${day} update`, result },
+
+  res.json({
+    ok: result.ok,
+    stage: definition.stage,
+    message: result.ok
+      ? `Moved to "${definition.title}" and emailed the customer.`
+      : `Moved to "${definition.title}", but the email failed: ${result.error ?? "unknown error"}.`,
   });
-  res.json({ ok: result.ok, day, error: result.error });
 });
 
 /** Attach a guest order to an account (or re-send the invitation). */

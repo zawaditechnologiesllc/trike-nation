@@ -77,11 +77,16 @@ const DEFAULTS = {
     shipped_at: null, delivered_at: null, cancelled_at: null, refunded_at: null,
     refunded_cents: null, delivery_updates_sent: [], last_delivery_update_at: null,
     account_invite_sent_at: null, account_linked_at: null, last_notified_at: null,
+    order_number: null, fulfillment_stage: "confirmed", stage_updated_at: null,
+    estimated_delivery_at: null, courier: null, shipping_cents: 0, tax_cents: 0,
+    origin_country: null, origin_region: null, origin_city: null, origin_network: null,
+    origin_timezone: null, origin_is_tor: null, origin_is_vpn: null,
+    origin_is_datacenter: null, risk_level: null, risk_score: null, risk_flags: [],
   }),
   order_events: () => ({
-    id: randomUUID(), created_at: now(), type: "status_change", from_status: null,
-    to_status: null, message: "", notified: false, email_to: null, email_subject: null,
-    actor_id: null, actor_email: null, metadata: {},
+    id: randomUUID(), created_at: now(), type: "status_change", stage: null, title: "",
+    from_status: null, to_status: null, message: "", notified: false, email_sent: false,
+    email_to: null, email_subject: null, actor_id: null, actor_email: null, metadata: {},
   }),
   system_state: () => ({ updated_at: now(), value: {} }),
   order_items: () => ({ id: randomUUID() }),
@@ -301,12 +306,34 @@ const supabaseStub = createServer(async (req, res) => {
         }
       }
       const withDefaults = { ...(DEFAULTS[match[1]]?.() ?? {}), ...row };
-      // unique key checks for realistic conflict errors
+      // Unique key checks, so local dev hits the same conflicts production does.
       if (match[1] === "products" && table.some((r) => r.slug === withDefaults.slug)) {
         return json(res, 409, { code: "23505", message: "duplicate key value violates unique constraint" });
       }
       if (match[1] === "discount_codes" && table.some((r) => r.code === withDefaults.code)) {
         return json(res, 409, { code: "23505", message: "duplicate key value violates unique constraint" });
+      }
+      // order_events.stage is NOT NULL in production. Enforcing it here too
+      // is the difference between catching a missing stage locally and finding
+      // out when the first real order fails to record an event.
+      if (match[1] === "order_events" && !withDefaults.stage) {
+        return json(res, 400, {
+          code: "23502",
+          message: 'null value in column "stage" of relation "order_events" violates not-null constraint',
+        });
+      }
+      // order_events UNIQUE (order_id, stage) — the idempotency lock the whole
+      // clock depends on. Without it here, two overlapping sweeps would look
+      // fine locally and double-send in production.
+      if (
+        match[1] === "order_events" &&
+        withDefaults.stage &&
+        table.some((r) => r.order_id === withDefaults.order_id && r.stage === withDefaults.stage)
+      ) {
+        return json(res, 409, {
+          code: "23505",
+          message: 'duplicate key value violates unique constraint "order_events_order_stage_key"',
+        });
       }
       table.push(withDefaults);
       inserted.push(withDefaults);

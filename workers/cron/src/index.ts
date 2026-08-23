@@ -6,6 +6,10 @@
  * its day 7 / 12 / 20 progress update. Keeping the schedule out of the web
  * service means a sleeping Render instance still gets swept.
  *
+ * The schedule runs every few minutes rather than daily: the sweeps are
+ * idempotent (each claims an order_events row), so a frequent clock costs
+ * nothing and shortens the delay on an abandoned-cart chase.
+ *
  * Deploy:  npx wrangler deploy --config workers/cron/wrangler.jsonc
  * Secret:  npx wrangler secret put CRON_SECRET --config workers/cron/wrangler.jsonc
  *          (must match CRON_SECRET on the backend)
@@ -29,7 +33,7 @@ async function runSweep(env: Env): Promise<{ status: number; body: SweepResult }
   if (!env.CRON_SECRET) {
     return { status: 500, body: { error: "CRON_SECRET is not set on this Worker" } };
   }
-  const url = `${env.API_URL.replace(/\/$/, "")}/api/cron/delivery-updates`;
+  const url = `${env.API_URL.replace(/\/$/, "")}/api/cron/tick`;
 
   // Render free instances cold-start; retry a slow first call before giving up.
   let lastError = "no attempt made";

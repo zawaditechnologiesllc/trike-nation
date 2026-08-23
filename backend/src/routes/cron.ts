@@ -2,7 +2,7 @@ import { Router } from "express";
 import { timingSafeEqual } from "node:crypto";
 import { env } from "../env";
 import { requireDb } from "../supabase";
-import { runDeliveryUpdates } from "../orders/service";
+import { runAbandonedRecovery, runDeliveryUpdates } from "../orders/service";
 
 /**
  * Scheduled jobs, called by the Cloudflare cron Worker (workers/cron) or any
@@ -49,6 +49,39 @@ cronRouter.post("/delivery-updates", requireDb, async (_req, res) => {
     console.error("[cron] delivery updates failed", err);
     res.status(500).json({ error: "Delivery update sweep failed" });
   }
+});
+
+/** Abandoned-order chases at day 3, 7 and 12. */
+cronRouter.post("/abandoned", requireDb, async (_req, res) => {
+  try {
+    res.json({ ok: true, ...(await runAbandonedRecovery()) });
+  } catch (err) {
+    console.error("[cron] abandoned recovery failed", err);
+    res.status(500).json({ error: "Abandoned recovery sweep failed" });
+  }
+});
+
+/**
+ * Everything the clock owns, in one call. This is what the scheduler hits;
+ * the individual endpoints stay for targeted re-runs from the admin panel.
+ *
+ * One sweep failing must not stop the others — an order stuck mid-pipeline is
+ * a worse outcome than a retry.
+ */
+cronRouter.post("/tick", requireDb, async (_req, res) => {
+  const results: Record<string, unknown> = {};
+  for (const [name, run] of [
+    ["delivery", runDeliveryUpdates],
+    ["abandoned", runAbandonedRecovery],
+  ] as const) {
+    try {
+      results[name] = await run();
+    } catch (err) {
+      console.error(`[cron] ${name} sweep failed`, err);
+      results[name] = { error: err instanceof Error ? err.message : "failed" };
+    }
+  }
+  res.json({ ok: true, ...results });
 });
 
 /** Liveness probe for the scheduler itself. */

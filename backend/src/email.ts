@@ -1,4 +1,7 @@
 import { env } from "./env";
+import { BUFFER_EXPLANATION, deliveryWindowLabel } from "../../shared/core/delivery";
+import { stageDefinition } from "../../shared/core/stages";
+import { trackingLink } from "../../shared/core/couriers";
 
 /**
  * Transactional email via Resend (https://resend.com/docs/api-reference).
@@ -151,7 +154,13 @@ function orderTable(order: OrderEmailData): string {
 }
 
 const orderLink = (orderId: string) => `${env.frontendUrl}/orders/${orderId}`;
-const deliveryWindow = () => `${env.deliveryMinDays}–${env.deliveryMaxDays} days`;
+
+/**
+ * One delivery window definition, shared with the storefront and the PDF. The
+ * country widens it by transit zone — quoting the domestic window to a buyer
+ * in Australia is how a shop generates "where is my order".
+ */
+const deliveryWindow = (countryCode?: string | null) => deliveryWindowLabel(countryCode);
 
 // ---------------------------------------------------------------------------
 // 1. Order placed — payment is with Stripe, confirmation is with a human
@@ -215,7 +224,12 @@ export function sendPaymentConfirmed(
 interface StatusCopy {
   subject: (orderRef: string) => string;
   title: string;
-  body: (ctx: { orderRef: string; trackingNumber: string | null; note: string | null }) => string;
+  body: (ctx: {
+    orderRef: string;
+    trackingNumber: string | null;
+    courier: string | null;
+    note: string | null;
+  }) => string;
 }
 
 const STATUS_COPY: Record<string, StatusCopy> = {
@@ -245,11 +259,12 @@ const STATUS_COPY: Record<string, StatusCopy> = {
   shipped: {
     subject: (r) => `Your order shipped — ${r}`,
     title: "It's on the way",
-    body: ({ orderRef, trackingNumber }) =>
+    body: ({ orderRef, trackingNumber, courier }) =>
       p(`<strong>${orderRef}</strong> left the Sacramento dock.`) +
-      (trackingNumber
-        ? `<p style="font-size:14px;color:#f5f5f7;margin:0 0 14px">Tracking number: <strong style="color:#ff3b45">${escape(trackingNumber)}</strong></p>`
-        : "") +
+      trackingBlock(courier, trackingNumber) +
+      // Without this sentence a three-week estimate reads as a slow shop; with
+      // it, it reads as a careful one and the buyer stops watching the calendar.
+      p(BUFFER_EXPLANATION) +
       muted(
         "Freight deliveries: the carrier will call to schedule a window. Inspect the crate before signing.",
       ),
@@ -278,7 +293,9 @@ const STATUS_COPY: Record<string, StatusCopy> = {
     title: "Refund issued",
     body: ({ orderRef }) =>
       p(`A refund for <strong>${orderRef}</strong> has been issued to your original payment method.`) +
-      p(`Banks typically take 5–10 business days to post it.`),
+      p(
+        `Refunds are processed by hand within ${env.refundDays} days. If the credit is not visible yet, that is almost always the bank rather than us — they typically take 5–10 business days to post it.`,
+      ),
   },
   pending_payment: {
     subject: (r) => `Order reopened — ${r}`,
@@ -298,7 +315,7 @@ export function sendOrderStatusChanged(
   to: string,
   orderId: string,
   status: string,
-  opts?: { trackingNumber?: string | null; note?: string | null },
+  opts?: { trackingNumber?: string | null; courier?: string | null; note?: string | null },
 ): Promise<SendResult> {
   const copy = STATUS_COPY[status];
   const orderRef = ref(orderId);
@@ -326,7 +343,12 @@ export function sendOrderStatusChanged(
     copy.subject(orderRef),
     shell(
       copy.title,
-      copy.body({ orderRef, trackingNumber: opts?.trackingNumber ?? null, note }) +
+      copy.body({
+        orderRef,
+        trackingNumber: opts?.trackingNumber ?? null,
+        courier: opts?.courier ?? null,
+        note,
+      }) +
         noteBlock +
         button(orderLink(orderId), "View your order"),
     ),
@@ -338,46 +360,91 @@ export function sendOrderStatusChanged(
 // 4. Delivery progress — the cron milestones (day 7 / 12 / 20)
 // ---------------------------------------------------------------------------
 
-const DELIVERY_STAGE: Record<number, { title: string; body: string }> = {
-  7: {
-    title: "Week one: your build is underway",
-    body: "Your machine has cleared frame prep and is being assembled. Nothing needed from you — this is just us keeping you in the loop.",
-  },
-  12: {
-    title: "Assembled and heading for the crate",
-    body: "Assembly and the pre-ship shakedown are done or close to it. Next stop is crating and the freight handoff.",
-  },
-  20: {
-    title: "In transit — final stretch",
-    body: "Your crate is with the carrier and moving. If it has already landed, ignore this — and if the tracking looks stuck, tell us and we'll chase it.",
-  },
-};
+/**
+ * A tracking number is only ever rendered as a LINK when the courier has a
+ * known URL and the number is not one we generated ourselves — a link that
+ * lands on "not found" makes the customer think nothing shipped.
+ */
+function trackingBlock(courier: string | null | undefined, tracking: string | null | undefined): string {
+  if (!tracking) return "";
+  const link = trackingLink(courier, tracking);
+  const value = link.url
+    ? `<a href="${link.url}" style="color:#ff3b45;text-decoration:none">${escape(tracking)}</a>`
+    : `<strong style="color:#ff3b45">${escape(tracking)}</strong>`;
+  return `<p style="font-size:14px;color:#f5f5f7;margin:0 0 14px">Tracking number: ${value}</p>`;
+}
 
 export function sendDeliveryUpdate(
   to: string,
   orderId: string,
-  dayNumber: number,
-  opts?: { trackingNumber?: string | null; status?: string },
+  stageKey: string,
+  opts?: {
+    trackingNumber?: string | null;
+    courier?: string | null;
+    countryCode?: string | null;
+    items?: { name: string; qty: number; color?: string | null }[];
+  },
 ): Promise<SendResult> {
   const orderRef = ref(orderId);
-  const stage = DELIVERY_STAGE[dayNumber] ?? {
-    title: "Delivery progress",
-    body: "Your order is moving through the pipeline.",
-  };
+  const stage = stageDefinition(stageKey);
+  const title = stage?.title ?? "Delivery progress";
+  const body = stage?.body ?? "Your order is moving through the pipeline.";
+
+  // Every stage email is about THIS order: the itemised list, not a generic
+  // "your order is on its way".
+  const items = (opts?.items ?? [])
+    .map((i) => `<li style="margin:0 0 6px">${escape(i.name)}${i.color ? ` — ${escape(i.color)}` : ""} × ${i.qty}</li>`)
+    .join("");
+  const itemList = items
+    ? `<ul style="color:#c8c6c5;font-size:14px;line-height:1.7;margin:0 0 14px;padding-left:18px">${items}</ul>`
+    : "";
+
   return sendEmail(
     to,
-    `Day ${dayNumber} update — ${orderRef}`,
+    `${title} — ${orderRef}`,
     shell(
-      stage.title,
-      p(`Day ${dayNumber} since we confirmed payment on <strong>${orderRef}</strong>.`) +
-        p(stage.body) +
-        (opts?.trackingNumber
-          ? `<p style="font-size:14px;color:#f5f5f7;margin:0 0 14px">Tracking number: <strong style="color:#ff3b45">${escape(opts.trackingNumber)}</strong></p>`
-          : "") +
+      title,
+      p(`An update on <strong>${orderRef}</strong>.`) +
+        p(body) +
+        itemList +
+        trackingBlock(opts?.courier, opts?.trackingNumber) +
         button(orderLink(orderId), "View your order") +
-        muted(`Full delivery window: ${deliveryWindow()} from confirmed payment.`),
+        muted(
+          `Full delivery window: ${deliveryWindow(opts?.countryCode)} from confirmed payment. ${BUFFER_EXPLANATION}`,
+        ),
     ),
-    { tags: { type: "delivery_update", day: String(dayNumber) } },
+    { tags: { type: "delivery_update", stage: stageKey } },
+  );
+}
+
+/**
+ * Order placed but never paid. This is NOT a confirmation — sending one for an
+ * unpaid order teaches customers that "confirmed" means nothing. It is an
+ * abandoned-cart email: what they chose, and a link that puts it back.
+ */
+export function sendAbandonedCart(
+  to: string,
+  order: OrderEmailData,
+  opts: { resumeUrl: string; reminderNumber: number },
+): Promise<SendResult> {
+  const first = opts.reminderNumber <= 1;
+  return sendEmail(
+    to,
+    first ? `You left something in your cart` : `Still thinking it over?`,
+    shell(
+      first ? "Your build is still staged" : "Your build is still here",
+      p(
+        first
+          ? "You got as far as checkout and the payment did not complete — nothing has been charged. Here is what you had staged:"
+          : "This is still sitting in your cart. No pressure, and nothing has been charged:",
+      ) +
+        orderTable(order) +
+        button(opts.resumeUrl, "Put this back in my cart") +
+        muted(
+          `If you have changed your mind, ignore this — we will stop after a couple more. Questions? ${env.supportEmail}.`,
+        ),
+    ),
+    { tags: { type: "abandoned_cart", reminder: String(opts.reminderNumber) } },
   );
 }
 

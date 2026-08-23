@@ -1,0 +1,68 @@
+# Backup clock.
+#
+# The Cloudflare Worker (workers/cron) is the primary scheduler. This workflow
+# exists because a scheduler with no backup is a single point of failure for
+# every post-purchase email — and the failure is silent: orders simply stop
+# being chased, and nobody notices until a customer asks.
+#
+# Both callers hit the same endpoint, and every sweep claims an order_events
+# row before acting, so the two firing at once cannot double-send.
+name: Cron backup
+
+on:
+  schedule:
+    # Hourly, offset off the hour so it does not collide with the Worker's
+    # */15 schedule.
+    - cron: "37 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: cron-backup
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    name: Advance orders
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the secret is configured
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          API_URL: ${{ secrets.API_URL }}
+        run: |
+          missing=()
+          [ -n "$CRON_SECRET" ] || missing+=("CRON_SECRET")
+          [ -n "$API_URL" ] || missing+=("API_URL")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing repository secrets: ${missing[*]}"
+            echo "See docs/DEPLOYMENT.md — CRON_SECRET must match the value on Render."
+            exit 1
+          fi
+
+      - name: Tick
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          API_URL: ${{ secrets.API_URL }}
+        run: |
+          set -euo pipefail
+          # Render free instances cold-start; give the first call room and
+          # retry rather than reporting a false failure.
+          for attempt in 1 2 3; do
+            code=$(curl -sS -o /tmp/tick.json -w '%{http_code}' \
+              --max-time 120 \
+              -X POST "${API_URL%/}/api/cron/tick" \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              -H "Content-Type: application/json" \
+              -d '{}' || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "Tick ok:"; cat /tmp/tick.json; exit 0
+            fi
+            echo "Attempt $attempt returned HTTP $code"
+            # 401/403 will not fix themselves — stop retrying.
+            case "$code" in 401|403) cat /tmp/tick.json; exit 1;; esac
+            sleep $((attempt * 10))
+          done
+          echo "::error::Cron tick failed after 3 attempts"
+          cat /tmp/tick.json || true
+          exit 1
